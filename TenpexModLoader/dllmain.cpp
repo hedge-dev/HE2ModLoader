@@ -397,7 +397,7 @@ void InitMods()
     PrintInfo("InitMods() Completed");
 }
 
-static const uint8_t GameCheck[] = { 0xE8u, 0x62, 0x70, 0x36, 0x00u };
+static const uint8_t GameCheck[] = { 0xE8u, 0xCEu, 0x6D, 0x36, 0x00u };
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,

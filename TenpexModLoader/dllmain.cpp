@@ -246,7 +246,7 @@ HOOK(void, __fastcall, CriErr_NotifyGeneric, ASLR(0x140522E48), CriErrorLevel le
         PrintError((char*)ss.c_str(), level);
 }
 
-HOOK(void*, __fastcall, RunCore, ASLR(0x14049AB30), void* a1)
+HOOK(void*, __fastcall, RunCore, ASLR(0x14049A8A0), void* a1)
 {
     void* result = originalRunCore(a1);
     RaiseEvents(modFrameEvents);

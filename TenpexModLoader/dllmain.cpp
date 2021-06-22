@@ -457,8 +457,6 @@ void InitMods()
     PrintInfo("InitMods() Completed");
 }
 
-static const uint8_t GameCheck[] = { 0xE8u, 0xCE, 0x6D, 0x36, 0x00u };
-
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -493,10 +491,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         }
 
         PrintInfo("Starting MusashiModLoader %s...", "v1.0");
-        if (!memcmp(GameCheck, (const char*)(ASLR(0x1400A0D14)), sizeof(GameCheck)))
-            InitLoader();
-        else
-            INSTALL_HOOK(SteamProtectionHook);
+        INSTALL_HOOK(SteamProtectionHook);
 
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:

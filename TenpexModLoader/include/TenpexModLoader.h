@@ -8,7 +8,11 @@
 	static type &name = *(type *)address
 
 #define FastcallFunctionPointer(RETURN_TYPE, NAME, ARGS, ADDRESS) \
-	static RETURN_TYPE (__fastcall *const NAME)ARGS = (RETURN_TYPE (__fastcall *)ARGS)ADDRESS
+	static RETURN_TYPE (__fastcall * NAME)ARGS = (RETURN_TYPE (__fastcall *)ARGS)ADDRESS
+
+#define UPDATE_FUNCTION_POINTER(NAME, ADDRESS) \
+	*((void**)&NAME) = (void*)ADDRESS
+
 
 static inline bool FileExists(const char* fileName)
 {
@@ -53,6 +57,10 @@ typedef uint8_t _BYTE;
 
 // CPK Types
 typedef char CriChar8;
+typedef signed int CriSint32;
+typedef unsigned int CriUint32;
+typedef CriUint32 CriFsBindId;
+typedef void** CriFsBinderHn;
 
 typedef enum
 {
@@ -60,6 +68,20 @@ typedef enum
     CRIERR_LEVEL_WARNING = 1,
     CRIERR_LEVEL_ENUM_BE_SINT32 = 0x7FFFFFFF
 } CriErrorLevel;
+
+typedef enum
+{
+    CRIFSBINDER_STATUS_NONE = 0,
+    CRIFSBINDER_STATUS_ANALYZE,
+    CRIFSBINDER_STATUS_COMPLETE,
+    CRIFSBINDER_STATUS_UNBIND,
+    CRIFSBINDER_STATUS_REMOVED,
+    CRIFSBINDER_STATUS_INVALID,
+    CRIFSBINDER_STATUS_ERROR,
+
+    /* enum be 4bytes */
+    CRIFSBINDER_STATUS_ENUM_BE_SINT32 = 0x7FFFFFFF
+} CriFsBinderStatus;
 
 typedef enum
 {

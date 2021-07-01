@@ -110,7 +110,7 @@ HOOK(bool, __fastcall, SteamAPI_IsSteamRunning, PROC_ADDRESS("steam_api.dll", "S
     return true;
 }
 
-HOOK(__int64, __fastcall, INITTEST, ASLR(0x1400A0C20), unsigned int a1, __int64 a2)
+HOOK(__int64, __fastcall, INITTEST, ASLR(0x1400A0D10), unsigned int a1, __int64 a2)
 {
     InitMods();
     return originalINITTEST(a1, a2);
@@ -172,9 +172,9 @@ const char* SubStringRaw(const char* text)
     return text;
 }
 
-FastcallFunctionPointer(void, criError_NotifyGeneric, (CriErrorLevel level, const CriChar8* error_id, CriError error_no), ASLR(0x140522E48));
+FastcallFunctionPointer(void, criError_NotifyGeneric, (CriErrorLevel level, const CriChar8* error_id, CriError error_no), ASLR(0x140523668));
 
-HOOK(CriError, __fastcall, crifsiowin_CreateFile, ASLR(0x140539614), CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, __int64 hTemplateFile)
+HOOK(CriError, __fastcall, crifsiowin_CreateFile, ASLR(0x140539E34), CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, __int64 hTemplateFile)
 {
     const CriChar8* internalPath = SubStringRaw(path);
     // Mod Check
@@ -195,8 +195,8 @@ HOOK(CriError, __fastcall, crifsiowin_CreateFile, ASLR(0x140539614), CriChar8* p
     return originalcrifsiowin_CreateFile(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
-DataPointer(bool, crifsiowin_utf8_path, ASLR(0x141F3D668));
-HOOK(CriError, __fastcall, criFsIoWin_Exists, ASLR(0x140538F68), CriChar8* path, bool* exists)
+DataPointer(bool, crifsiowin_utf8_path, ASLR(0x141F3E838));
+HOOK(CriError, __fastcall, criFsIoWin_Exists, ASLR(0x140539788), CriChar8* path, bool* exists)
 {
     const CriChar8* internalPath = SubStringRaw(path);
     DWORD attributes = -1;
@@ -235,7 +235,7 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, ASLR(0x140538F68), CriChar8* path,
     return originalcriFsIoWin_Exists(path, exists);
 }
 
-HOOK(void, __fastcall, CriErr_NotifyGeneric, ASLR(0x140522E48), CriErrorLevel level, const CriChar8* error_id, CriError error_no)
+HOOK(void, __fastcall, CriErr_NotifyGeneric, ASLR(0x140523668), CriErrorLevel level, const CriChar8* error_id, CriError error_no)
 {
     std::string ss;
     ss.append("[criErr_NotifyGeneric] Level: %d - ");
@@ -246,7 +246,7 @@ HOOK(void, __fastcall, CriErr_NotifyGeneric, ASLR(0x140522E48), CriErrorLevel le
         PrintError((char*)ss.c_str(), level);
 }
 
-HOOK(void*, __fastcall, RunCore, ASLR(0x14049A8A0), void* a1)
+HOOK(void*, __fastcall, RunCore, ASLR(0x14049B0C0), void* a1)
 {
     void* result = originalRunCore(a1);
     RaiseEvents(modFrameEvents);
@@ -397,7 +397,7 @@ void InitMods()
     PrintInfo("InitMods() Completed");
 }
 
-static const uint8_t GameCheck[] = { 0xE8u, 0xCEu, 0x6D, 0x36, 0x00u };
+static const uint8_t GameCheck[] = { 0xE8u, 0xFEu, 0x74, 0x36, 0x00u };
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -433,7 +433,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         }
 
         PrintInfo("Starting TenpexModLoader %s...", "v1.0.2");
-        if (!memcmp(GameCheck, (const char*)(ASLR(0x1400A0D14)), sizeof(GameCheck)))
+        if (!memcmp(GameCheck, (const char*)(ASLR(0x1400A0E04)), sizeof(GameCheck)))
             InitLoader();
         else
             INSTALL_HOOK(SteamProtectionHook);

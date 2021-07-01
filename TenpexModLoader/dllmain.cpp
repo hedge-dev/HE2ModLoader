@@ -432,7 +432,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
             ConsoleEnabled = true;
         }
 
-        PrintInfo("Starting TenpexModLoader %s...", "v1.0.2");
+        PrintInfo("Starting TenpexModLoader %s...", "v1.0.3");
         if (!memcmp(GameCheck, (const char*)(ASLR(0x1400A0E04)), sizeof(GameCheck)))
             InitLoader();
         else

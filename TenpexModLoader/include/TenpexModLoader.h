@@ -34,6 +34,13 @@ static inline bool dirExists(const std::string& dirName_in)
 static const int ModLoaderVer = 1;
 static const int GameVer = 0;
 
+enum Game
+{
+    Game_Unknown = 0,
+    Game_Tenpex  = 1259790,
+    Game_Musashi = 981890
+};
+
 struct Mod
 {
     const char* Name;
@@ -44,6 +51,7 @@ struct ModInfo
 {
     std::vector<Mod*>* ModList;
     Mod* CurrentMod;
+    Game CurrentGame;
 };
 
 typedef void(__cdecl* ModInitEvent)(ModInfo* modInfo);

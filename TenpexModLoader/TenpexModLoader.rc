@@ -42,13 +42,13 @@ BEGIN
         BLOCK "0c0904b0"
         BEGIN
             VALUE "CompanyName", "NeverFinishAnything "
-            VALUE "FileDescription", "TenpexModLoader - Mod Loader for Puyo Puyo Tetris 2"
-            VALUE "FileVersion", "1.0.0.0"
+            VALUE "FileDescription", "TenpexModLoader - Mod Loader for Puyo Puyo Tetris 2 and Olympic Games Tokyo 2020"
+            VALUE "FileVersion", "2.0.0.0"
             VALUE "InternalName", "PPT2ML.dll"
             VALUE "LegalCopyright", "Copyright (C) NeverFinishAnything  2021"
             VALUE "OriginalFilename", "PPT2ML.dll"
-            VALUE "ProductName", "TenpexModLoader - Mod Loader for Puyo Puyo Tetris 2"
-            VALUE "ProductVersion", "1.0.0.0"
+            VALUE "ProductName", "TenpexModLoader - Mod Loader for Puyo Puyo Tetris 2 and Olympic Games Tokyo 2020"
+            VALUE "ProductVersion", "2.0.0.0"
         END
     END
     BLOCK "VarFileInfo"

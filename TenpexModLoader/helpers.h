@@ -27,6 +27,15 @@ static size_t PROCESS_ENTRY = (size_t)DetourGetEntryPoint((HMODULE)BASE_ADDRESS)
 		DetourTransactionCommit(); \
 	}
 
+#define INSTALL_HOOK_SIG(functionName) \
+	{ \
+		original##functionName = (functionName*)(_a##functionName); \
+		DetourTransactionBegin(); \
+		DetourUpdateThread(GetCurrentThread()); \
+		DetourAttach((void**)&original##functionName, implOf##functionName); \
+		DetourTransactionCommit(); \
+	}
+
 #define VTABLE_HOOK(returnType, callingConvention, className, functionName, ...) \
 	typedef returnType callingConvention functionName(className* This, __VA_ARGS__); \
 	functionName* original##functionName; \

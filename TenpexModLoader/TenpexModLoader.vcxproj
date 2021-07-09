@@ -15,7 +15,8 @@
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{f770bf87-0e43-458c-a3fc-6f3493a823e3}</ProjectGuid>
     <RootNamespace>PPT2ML</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>MusashiModLoader</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -104,6 +105,7 @@
     <ClInclude Include="include\syelog.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="sigscanner.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />

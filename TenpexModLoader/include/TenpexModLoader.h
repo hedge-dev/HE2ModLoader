@@ -37,8 +37,9 @@ static const int GameVer = 0;
 enum Game
 {
     Game_Unknown = 0,
-    Game_Tenpex  = 1259790,
-    Game_Musashi = 981890
+    Game_Wars    = 637100,
+    Game_Musashi = 981890,
+    Game_Tenpex  = 1259790
 };
 
 struct Mod

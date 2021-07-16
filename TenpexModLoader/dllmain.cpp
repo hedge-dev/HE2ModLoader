@@ -8,6 +8,7 @@
 #include <INIReader.h>
 #include <detours.h>
 #include "helpers.h"
+#include "wars.h"
 #include "Events.h"
 #include "sigscanner.h"
 #include <d3d11.h>
@@ -20,39 +21,52 @@
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 #define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
 
-using std::string;
-using std::wstring;
-using std::vector;
-
-static vector<char*> ReplaceDirs;
-static std::map<string, string> FileCache;
-static bool ConsoleEnabled = false;
-static bool ProtectionBypassed = false;
-static HANDLE stdoutHandle = nullptr;
-intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
-ModInfo* ModsInfo;
-Game CurrentGame = Game_Unknown;
-
 #define DEFINE_SIGSCAN(NAME, BYTES, MASK) \
 const char* _b##NAME = BYTES; \
 const char* _m##NAME = MASK; \
 size_t _a##NAME = 0;
 
-#define DO_SIGSCAN(NAME) \
-_a##NAME = SignatureScanner::FindSignature(BaseAddress, DetourGetModuleSize((HMODULE)BaseAddress), _b##NAME, _m##NAME); \
-PrintDebug("SIGSCAN: %s: %llX (%llX)", #NAME, _a##NAME, _a##NAME - BaseAddress + 0x140000000);
+#define DO_SIGSCAN(NAME) _a##NAME = SignatureScanner::FindSignature(BaseAddress, DetourGetModuleSize((HMODULE)BaseAddress), _b##NAME, _m##NAME);
+
+#define LINK_SCAN(MAIN, SUB) if (_a##SUB && !_a##MAIN) _a##MAIN = _a##SUB;
+#define CHECK_SCAN(NAME) \
+PrintDebug("SIGSCAN: %s: %llX (%llX)", #NAME, _a##NAME, _a##NAME - BaseAddress + 0x140000000); \
+if (!_a##NAME) MessageBoxA(NULL, "Could not find "###NAME"! The modloader may fail to load.", "Scan Error", NULL);
+
+
+
+using std::string;
+using std::wstring;
+using std::vector;
+
+vector<char*> ReplaceDirs;
+std::map<string, string> FileCache;
+bool ConsoleEnabled = false;
+string* saveFilePath = new string();
+bool useSaveFilePath = false;
+HANDLE stdoutHandle = nullptr;
+intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
+ModInfo* ModsInfo;
+Game CurrentGame = Game_Unknown;
 
 // Criware
 DEFINE_SIGSCAN(criFsIoWin_Exists,         "\x48\x89\x5C\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x84\x24\x00\x00\x00\x00\x48\x8B\xDA\x48\x8B\xF9\x48\x85\xC9", "xxxx?xxxx????xxx????xxxxxxx????xxxxxxxxx")
+DEFINE_SIGSCAN(criFsIoWin_Exists2,        "\x48\x89\x5C\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\xDA\x48\x8B\xF9\x48\x85\xC9\x74\x64\x48\x85\xD2\x74\x5F\x83\x3D\x00\x00\x00\x00\x00\x74\x38\xE8\x00", "xxxx?xxxx????xxxxxxxxxxxxxxxxxx?????xxx?")
 DEFINE_SIGSCAN(crifsiowin_CreateFile,     "\x40\x53\x55\x56\x57\x41\x54\x41\x56\x41\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x84\x24\x00\x00\x00\x00\x83\x3D\x00\x00", "xxxxxxxxxxxxxx????xxx????xxxxxxx????xx??")
+DEFINE_SIGSCAN(crifsiowin_CreateFile2,    "\x48\x89\x5C\x24\x00\x48\x89\x6C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x83\x3D\x00\x00\x00\x00\x00\x49\x8B\xF9\x41\x8B\xF0\x8B\xEA\x48\x8B", "xxxx?xxxx?xxxx?xxxx????xx?????xxxxxxxxxx")
 DEFINE_SIGSCAN(criErr_NotifyGeneric,      "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x48\x89\x78\x20\x41\x56\x48\x83\xEC\x30\x45\x33\xC9\x48\x8B\xFA\x4C\x39\x0D\x00\x00\x00\x00\x8B\xF1", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx????xx")
+DEFINE_SIGSCAN(criErr_NotifyGeneric2,     "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x57\x41\x56\x41\x57\x48\x83\xEC\x30\x4C\x8D\x70\xD8\x4C\x8D\x78\xD8\x48\x8B\xEA\x8B\xF9\x4C\x89\x40", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 DEFINE_SIGSCAN(criFsBinder_BindDirectory, "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x48\x89\x78\x20\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x30\x48\x8B\x74\x24\x00\x33\xED\x49\x8B\xD9\x4D", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx?xxxxxx")
 DEFINE_SIGSCAN(criFsBinder_BindCpk,       "\x48\x83\xEC\x48\x48\x8B\x44\x24\x00\xC7\x44\x24\x00\x00\x00\x00\x00\x48\x89\x44\x24\x00\x8B\x44\x24\x70\x89\x44\x24\x20\xE8\x00\x00\x00\x00\x48\x83\xC4\x48\xC3", "xxxxxxxx?xxx?????xxxx?xxxxxxxxx????xxxxx")
 DEFINE_SIGSCAN(criFsBinder_SetPriority,   "\x48\x89\x5C\x24\x00\x57\x48\x83\xEC\x20\x8B\xFA\xE8\x00\x00\x00\x00\x48\x8B\xD8\x48\x85\xC0\x75\x18\x8D\x58\xFE\x33\xC9\x44\x8B\xC3\x48\x8D\x15\x00\x00\x00\x00", "xxxx?xxxxxxxx????xxxxxxxxxxxxxxxxxxx????")
+DEFINE_SIGSCAN(criFsBinder_SetPriority2,  "\x48\x89\x5C\x24\x00\x57\x48\x83\xEC\x20\x8B\xFA\xE8\x00\x00\x00\x00\x48\x8B\xD8\x48\x85\xC0\x75\x18\x8D\x58\xFE\x48\x8D\x15\x00\x00\x00\x00\x33\xC9\x44\x8B\xC3\xE8\x00\x00\x00\x00\x8B\xC3\xEB\x3E\x48\x83\x38\x00\x75\x13\x48\x8D\x15\x00\x00\x00\x00\x33\xC9\xE8\x00\x00\x00\x00\x83", "xxxx?xxxxxxxx????xxxxxxxxxxxxxx????xxxxxx????xxxxxxxxxxxxx????xxx????x")
 DEFINE_SIGSCAN(criFsBinder_GetStatus,     "\x48\x89\x5C\x24\x00\x57\x48\x83\xEC\x20\x48\x8B\xDA\x8B\xF9\x85\xC9\x74\x36\x48\x85\xD2\x74\x3C\xE8\x00\x00\x00\x00\x48\x85\xC0\x75\x0A\xC7\x03\x00\x00\x00\x00", "xxxx?xxxxxxxxxxxxxxxxxxxx????xxxxxxx????")
-DEFINE_SIGSCAN(RunCore,                   "\x40\x53\x48\x83\xEC\x20\x48\x8B\xD9\x48\x8B\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x4B\x70\xE8\x00\x00\x00\x00\x48\x8B\x4B\x78\x48\x85\xC9\x74\x10\x48", "xxxxxxxxxxxx????x????xxxxx????xxxxxxxxxx")
 
-static void PrintError(const char* text, ...)
+// Engine
+DEFINE_SIGSCAN(RunCore,                   "\x40\x53\x48\x83\xEC\x20\x48\x8B\xD9\x48\x8B\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x4B\x70\xE8\x00\x00\x00\x00\x48\x8B\x4B\x78\x48\x85\xC9\x74\x10\x48", "xxxxxxxxxxxx????x????xxxxx????xxxxxxxxxx")
+DEFINE_SIGSCAN(RunCore2,                  "\x40\x53\x48\x83\xEC\x40\x48\x8B\x51\x28\x48\x8B\xD9\x48\x8B\x89\x00\x00\x00\x00\x48\x83\xC2\x04\xE8\x00\x00\x00\x00\x48\x8B\x43\x28\x80\x78\x19\x00\x74\x7A\x48", "xxxxxxxxxxxxxxxx????xxxxx????xxxxxxxxxxx")
+
+void PrintError(const char* text, ...)
 {
     if (!ConsoleEnabled)
         return;
@@ -68,7 +82,7 @@ static void PrintError(const char* text, ...)
     va_end(ap);
 }
 
-static void PrintWarn(const char* text, ...)
+void PrintWarn(const char* text, ...)
 {
     if (!ConsoleEnabled)
         return;
@@ -84,7 +98,7 @@ static void PrintWarn(const char* text, ...)
     va_end(ap);
 }
 
-static void PrintDebug(const char* text, ...)
+void PrintDebug(const char* text, ...)
 {
     if (!ConsoleEnabled)
         return;
@@ -100,7 +114,7 @@ static void PrintDebug(const char* text, ...)
     va_end(ap);
 }
 
-static void PrintInfo(const char* text, ...)
+void PrintInfo(const char* text, ...)
 {
     if (!ConsoleEnabled)
         return;
@@ -168,7 +182,7 @@ void InDecrease(int* num, bool decrease)
 
 const char* PathSubString(const char* text)
 {
-    if (CurrentGame == Game_Musashi)
+    if (CurrentGame != Game_Tenpex)
         return text + 5;
     const char* result = strstr(text, "raw");
     if (result)
@@ -316,32 +330,70 @@ HOOK(void*, __fastcall, RunCore, _aRunCore, void* a1)
     return result;
 }
 
+
 void InitLoader()
 {
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
-    DO_SIGSCAN(criFsIoWin_Exists);
-    DO_SIGSCAN(crifsiowin_CreateFile);
-    DO_SIGSCAN(criErr_NotifyGeneric);
-    DO_SIGSCAN(criFsBinder_BindDirectory);
-    DO_SIGSCAN(criFsBinder_BindCpk);
-    DO_SIGSCAN(criFsBinder_SetPriority);
-    DO_SIGSCAN(criFsBinder_GetStatus);
-    DO_SIGSCAN(RunCore);
+    // Wars' signatures are different which to save scanning time, it is separated
+    if (CurrentGame == Game_Wars)
+    {
+        DO_SIGSCAN(criFsIoWin_Exists2);
+        DO_SIGSCAN(crifsiowin_CreateFile2);
+        DO_SIGSCAN(criErr_NotifyGeneric2);
+        DO_SIGSCAN(criFsBinder_BindDirectory);
+        DO_SIGSCAN(criFsBinder_BindCpk);
+        DO_SIGSCAN(criFsBinder_SetPriority2);
+        DO_SIGSCAN(criFsBinder_GetStatus);
+        DO_SIGSCAN(RunCore2);
+    }
+    else
+    {
+        DO_SIGSCAN(criFsIoWin_Exists);
+        DO_SIGSCAN(crifsiowin_CreateFile);
+        DO_SIGSCAN(criErr_NotifyGeneric);
+        DO_SIGSCAN(criFsBinder_BindDirectory);
+        DO_SIGSCAN(criFsBinder_BindCpk);
+        DO_SIGSCAN(criFsBinder_SetPriority);
+        DO_SIGSCAN(criFsBinder_GetStatus);
+        DO_SIGSCAN(RunCore);
+    }
 
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     PrintDebug("Scan completed in %d ms", diff.count());
 
+    // Link scans
+    LINK_SCAN(criErr_NotifyGeneric, criErr_NotifyGeneric2);
+    LINK_SCAN(crifsiowin_CreateFile, crifsiowin_CreateFile2);
+    LINK_SCAN(criFsIoWin_Exists, criFsIoWin_Exists2);
+    LINK_SCAN(criFsBinder_SetPriority, criFsBinder_SetPriority2);
+    LINK_SCAN(RunCore, RunCore2);
+
+    // Check scans
+    CHECK_SCAN(criFsIoWin_Exists);
+    CHECK_SCAN(crifsiowin_CreateFile);
+    CHECK_SCAN(criErr_NotifyGeneric);
+    CHECK_SCAN(criFsBinder_BindDirectory);
+    CHECK_SCAN(criFsBinder_BindCpk);
+    CHECK_SCAN(criFsBinder_SetPriority);
+    CHECK_SCAN(criFsBinder_GetStatus);
+    CHECK_SCAN(RunCore);
+
+    // Install all the needed hooks
     INSTALL_HOOK_SIG(crifsiowin_CreateFile);
     INSTALL_HOOK_SIG(criFsIoWin_Exists);
     INSTALL_HOOK_SIG(criErr_NotifyGeneric);
     INSTALL_HOOK_SIG(criFsBinder_BindCpk);
     INSTALL_HOOK_SIG(RunCore);
 
+    // Update function pointers with the scan results
     UPDATE_FUNCTION_POINTER(criFsBinder_BindDirectory,  _acriFsBinder_BindDirectory);
     UPDATE_FUNCTION_POINTER(criFsBinder_GetStatus,      _acriFsBinder_GetStatus);
     UPDATE_FUNCTION_POINTER(criFsBinder_SetPriority,    _acriFsBinder_SetPriority);
     UPDATE_FUNCTION_POINTER(criError_NotifyGeneric,     _acriErr_NotifyGeneric);
+
+    if (CurrentGame == Game_Wars)
+        InitLoaderWars();
 }
 
 void indexInclude(string s, int rootIndex)
@@ -442,6 +494,8 @@ void InitMods()
                     (*replacedir) += "\\raw\\";
                 else if (CurrentGame == Game_Musashi)
                     (*replacedir) += "\\disk\\musashi_0\\";
+                else if (CurrentGame == Game_Wars)
+                    (*replacedir) += "\\disk\\wars_patch\\";
                 PrintDebug("    Added Include: %s", replacedir->c_str());
                 ReplaceDirs.insert(ReplaceDirs.begin(), (char*)replacedir->c_str());
             }
@@ -516,7 +570,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     INIReader cpkredir;
 
     bool useFileLogging = false;
-    string logType, logFile;
+    string logType, logFile, saveFileFallback, saveFileOverride;
+    long enableSaveFileRedirection;
+
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
@@ -524,6 +580,10 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 
         logType = cpkredir.GetString("CPKREDIR", "LogType", "");
         logFile = cpkredir.GetString("CPKREDIR", "LogFile", "cpkredir.log");
+        saveFileFallback = cpkredir.GetString("CPKREDIR", "SaveFileFallback", "");
+        saveFileOverride = cpkredir.GetString("CPKREDIR", "SaveFileOverride", "");
+        enableSaveFileRedirection = cpkredir.GetInteger("CPKREDIR", "EnableSaveFileRedirection", -1);
+
         if (!logType.empty())
         {
             ConsoleEnabled = !strcmp(logType.c_str(), "console");
@@ -540,6 +600,21 @@ BOOL APIENTRY DllMain( HMODULE hModule,
             freopen(logFile.c_str(), "w", stdout);
             ConsoleEnabled = true;
         }
+
+        if (!saveFileFallback.empty())
+        {
+            saveFilePath->clear();
+            saveFilePath->append(saveFileFallback);
+        }
+
+        if (!saveFileOverride.empty())
+        {
+            saveFilePath->clear();
+            saveFilePath->append(saveFileOverride);
+        }
+
+        if (enableSaveFileRedirection != -1)
+            useSaveFilePath = enableSaveFileRedirection != 0;
 
         PrintInfo("Starting TenpexModLoader %s...", "v2.0");
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);

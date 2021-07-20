@@ -334,29 +334,26 @@ HOOK(void*, __fastcall, RunCore, _aRunCore, void* a1)
 void InitLoader()
 {
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
-    // Wars' signatures are different which to save scanning time, it is separated
-    if (CurrentGame == Game_Wars)
-    {
-        DO_SIGSCAN(criFsIoWin_Exists2);
-        DO_SIGSCAN(crifsiowin_CreateFile2);
-        DO_SIGSCAN(criErr_NotifyGeneric2);
-        DO_SIGSCAN(criFsBinder_BindDirectory);
-        DO_SIGSCAN(criFsBinder_BindCpk);
-        DO_SIGSCAN(criFsBinder_SetPriority2);
-        DO_SIGSCAN(criFsBinder_GetStatus);
-        DO_SIGSCAN(RunCore2);
-    }
-    else
-    {
+    DO_SIGSCAN(criFsIoWin_Exists2);
+    DO_SIGSCAN(crifsiowin_CreateFile2);
+    DO_SIGSCAN(criErr_NotifyGeneric2);
+    DO_SIGSCAN(criFsBinder_BindDirectory);
+    DO_SIGSCAN(criFsBinder_BindCpk);
+    DO_SIGSCAN(criFsBinder_SetPriority2);
+    DO_SIGSCAN(criFsBinder_GetStatus);
+    DO_SIGSCAN(RunCore2);
+
+    // If Wars' signatures weren't found, then scan Tenpex's instead
+    if (!_acriFsIoWin_Exists2)
         DO_SIGSCAN(criFsIoWin_Exists);
+    if (!_acrifsiowin_CreateFile2)
         DO_SIGSCAN(crifsiowin_CreateFile);
+    if (!_acriErr_NotifyGeneric2)
         DO_SIGSCAN(criErr_NotifyGeneric);
-        DO_SIGSCAN(criFsBinder_BindDirectory);
-        DO_SIGSCAN(criFsBinder_BindCpk);
+    if (!_acriFsBinder_SetPriority2)
         DO_SIGSCAN(criFsBinder_SetPriority);
-        DO_SIGSCAN(criFsBinder_GetStatus);
+    if (!_aRunCore2)
         DO_SIGSCAN(RunCore);
-    }
 
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

@@ -496,6 +496,8 @@ void InitMods()
                     (*replacedir) += "\\disk\\musashi_0\\";
                 else if (CurrentGame == Game_Wars)
                     (*replacedir) += "\\disk\\wars_patch\\";
+                else
+                    (*replacedir) += "\\data\\";
                 PrintDebug("    Added Include: %s", replacedir->c_str());
                 ReplaceDirs.insert(ReplaceDirs.begin(), (char*)replacedir->c_str());
             }

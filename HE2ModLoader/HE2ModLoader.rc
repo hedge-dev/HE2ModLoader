@@ -42,12 +42,12 @@ BEGIN
         BLOCK "0c0904b0"
         BEGIN
             VALUE "CompanyName", "NeverFinishAnything "
-            VALUE "FileDescription", "HE2ModLoader - Mod Loader for PC Hedgehog Engine Games"
+            VALUE "FileDescription", "HE2ModLoader - Mod Loader for PC Hedgehog Engine 2 Games"
             VALUE "FileVersion", "2.0.0.0"
             VALUE "InternalName", "HE2ModLoader.dll"
             VALUE "LegalCopyright", "Copyright (C) NeverFinishAnything 2021"
             VALUE "OriginalFilename", "HE2ModLoader.dll"
-            VALUE "ProductName", "HE2ModLoader - Mod Loader for PC Hedgehog Engine Games"
+            VALUE "ProductName", "HE2ModLoader - Mod Loader for PC Hedgehog Engine 2 Games"
             VALUE "ProductVersion", "2.0.0.0"
         END
     END

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TenpexModLoader", "TenpexModLoader\TenpexModLoader.vcxproj", "{F770BF87-0E43-458C-A3FC-6F3493A823E3}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HE2ModLoader", "HE2ModLoader\HE2ModLoader.vcxproj", "{F770BF87-0E43-458C-A3FC-6F3493A823E3}"
 	ProjectSection(ProjectDependencies) = postProject
 		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A} = {E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}
 	EndProjectSection
@@ -13,27 +13,17 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Release|x64 = Release|x64
-		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Debug|x64.ActiveCfg = Debug|x64
 		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Debug|x64.Build.0 = Debug|x64
-		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Debug|x86.ActiveCfg = Debug|Win32
-		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Debug|x86.Build.0 = Debug|Win32
 		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Release|x64.ActiveCfg = Release|x64
 		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Release|x64.Build.0 = Release|x64
-		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Release|x86.ActiveCfg = Release|Win32
-		{F770BF87-0E43-458C-A3FC-6F3493A823E3}.Release|x86.Build.0 = Release|Win32
 		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Debug|x64.ActiveCfg = Debug|x64
 		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Debug|x64.Build.0 = Debug|x64
-		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Debug|x86.ActiveCfg = Debug|Win32
-		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Debug|x86.Build.0 = Debug|Win32
 		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Release|x64.ActiveCfg = Release|x64
 		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Release|x64.Build.0 = Release|x64
-		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Release|x86.ActiveCfg = Release|Win32
-		{E6278A28-E93A-42A9-AE64-E7A5E8D39D7A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <TenpexModLoader.h>
+#include <HE2ModLoader.h>
 #include <vector>
 
 extern std::vector<ModCallEvent> modFrameEvents;

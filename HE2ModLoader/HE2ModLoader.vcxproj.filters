@@ -48,7 +48,7 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\TenpexModLoader.h">
+    <ClInclude Include="include\HE2ModLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="sigscanner.h">
@@ -73,7 +73,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="TenpexModLoader.rc">
+    <ResourceCompile Include="HE2ModLoader.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

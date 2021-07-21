@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <TenpexModLoader.h>
+#include <HE2ModLoader.h>
 #include <CommonLoader.h>
 #include <INIReader.h>
 #include <detours.h>
@@ -21,20 +21,6 @@
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 #define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
 
-#define DEFINE_SIGSCAN(NAME, BYTES, MASK) \
-const char* _b##NAME = BYTES; \
-const char* _m##NAME = MASK; \
-size_t _a##NAME = 0;
-
-#define DO_SIGSCAN(NAME) _a##NAME = SignatureScanner::FindSignature(BaseAddress, DetourGetModuleSize((HMODULE)BaseAddress), _b##NAME, _m##NAME);
-
-#define LINK_SCAN(MAIN, SUB) if (_a##SUB && !_a##MAIN) _a##MAIN = _a##SUB;
-#define CHECK_SCAN(NAME) \
-PrintDebug("SIGSCAN: %s: %llX (%llX)", #NAME, _a##NAME, _a##NAME - BaseAddress + 0x140000000); \
-if (!_a##NAME) MessageBoxA(NULL, "Could not find "###NAME"! The modloader may fail to load.", "Scan Error", NULL);
-
-
-
 using std::string;
 using std::wstring;
 using std::vector;
@@ -44,6 +30,7 @@ std::map<string, string> FileCache;
 bool ConsoleEnabled = false;
 string* saveFilePath = new string();
 bool useSaveFilePath = false;
+bool directoryBound = false;
 HANDLE stdoutHandle = nullptr;
 intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
 ModInfo* ModsInfo;
@@ -54,8 +41,8 @@ DEFINE_SIGSCAN(criFsIoWin_Exists,         "\x48\x89\x5C\x24\x00\x57\x48\x81\xEC\
 DEFINE_SIGSCAN(criFsIoWin_Exists2,        "\x48\x89\x5C\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\xDA\x48\x8B\xF9\x48\x85\xC9\x74\x64\x48\x85\xD2\x74\x5F\x83\x3D\x00\x00\x00\x00\x00\x74\x38\xE8\x00", "xxxx?xxxx????xxxxxxxxxxxxxxxxxx?????xxx?")
 DEFINE_SIGSCAN(crifsiowin_CreateFile,     "\x40\x53\x55\x56\x57\x41\x54\x41\x56\x41\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x84\x24\x00\x00\x00\x00\x83\x3D\x00\x00", "xxxxxxxxxxxxxx????xxx????xxxxxxx????xx??")
 DEFINE_SIGSCAN(crifsiowin_CreateFile2,    "\x48\x89\x5C\x24\x00\x48\x89\x6C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x83\x3D\x00\x00\x00\x00\x00\x49\x8B\xF9\x41\x8B\xF0\x8B\xEA\x48\x8B", "xxxx?xxxx?xxxx?xxxx????xx?????xxxxxxxxxx")
-DEFINE_SIGSCAN(criErr_NotifyGeneric,      "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x48\x89\x78\x20\x41\x56\x48\x83\xEC\x30\x45\x33\xC9\x48\x8B\xFA\x4C\x39\x0D\x00\x00\x00\x00\x8B\xF1", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx????xx")
-DEFINE_SIGSCAN(criErr_NotifyGeneric2,     "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x57\x41\x56\x41\x57\x48\x83\xEC\x30\x4C\x8D\x70\xD8\x4C\x8D\x78\xD8\x48\x8B\xEA\x8B\xF9\x4C\x89\x40", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+DEFINE_SIGSCAN(criErr_Notify,             "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x48\x89\x78\x20\x41\x56\x48\x83\xEC\x30\x45\x33\xC9\x48\x8B\xFA\x4C\x39\x0D\x00\x00\x00\x00\x8B\xF1", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx????xx")
+DEFINE_SIGSCAN(criErr_Notify2,            "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x57\x41\x56\x41\x57\x48\x83\xEC\x30\x4C\x8D\x70\xD8\x4C\x8D\x78\xD8\x48\x8B\xEA\x8B\xF9\x4C\x89\x40", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 DEFINE_SIGSCAN(criFsBinder_BindDirectory, "\x48\x8B\xC4\x48\x89\x58\x08\x48\x89\x68\x10\x48\x89\x70\x18\x48\x89\x78\x20\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x30\x48\x8B\x74\x24\x00\x33\xED\x49\x8B\xD9\x4D", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx?xxxxxx")
 DEFINE_SIGSCAN(criFsBinder_BindCpk,       "\x48\x83\xEC\x48\x48\x8B\x44\x24\x00\xC7\x44\x24\x00\x00\x00\x00\x00\x48\x89\x44\x24\x00\x8B\x44\x24\x70\x89\x44\x24\x20\xE8\x00\x00\x00\x00\x48\x83\xC4\x48\xC3", "xxxxxxxx?xxx?????xxxx?xxxxxxxxx????xxxxx")
 DEFINE_SIGSCAN(criFsBinder_SetPriority,   "\x48\x89\x5C\x24\x00\x57\x48\x83\xEC\x20\x8B\xFA\xE8\x00\x00\x00\x00\x48\x8B\xD8\x48\x85\xC0\x75\x18\x8D\x58\xFE\x33\xC9\x44\x8B\xC3\x48\x8D\x15\x00\x00\x00\x00", "xxxx?xxxxxxxx????xxxxxxxxxxxxxxxxxxx????")
@@ -77,7 +64,7 @@ void PrintError(const char* text, ...)
     char buffer[512];
     _vsprintf_p(buffer, 512, text, ap);
     SetConsoleTextAttribute(stdoutHandle, FOREGROUND_RED | FOREGROUND_INTENSITY);
-    printf("%s%s\n", "[TenpexML] [ERROR] ", buffer);
+    printf("%s%s\n", "[HE2ML] [ERROR] ", buffer);
     SetConsoleTextAttribute(stdoutHandle, FOREGROUND_WHITE);
     va_end(ap);
 }
@@ -93,7 +80,7 @@ void PrintWarn(const char* text, ...)
     char buffer[512];
     _vsprintf_p(buffer, 512, text, ap);
     SetConsoleTextAttribute(stdoutHandle, FOREGROUND_YELLOW | FOREGROUND_INTENSITY);
-    printf("%s%s\n", "[TenpexML] [WARN]  ", buffer);
+    printf("%s%s\n", "[HE2ML] [WARN]  ", buffer);
     SetConsoleTextAttribute(stdoutHandle, FOREGROUND_WHITE);
     va_end(ap);
 }
@@ -109,7 +96,7 @@ void PrintDebug(const char* text, ...)
     char buffer[512];
     _vsprintf_p(buffer, 512, text, ap);
     SetConsoleTextAttribute(stdoutHandle, FOREGROUND_GREEN | FOREGROUND_INTENSITY);
-    printf("%s%s\n", "[TenpexML] [DEBUG] ", buffer);
+    printf("%s%s\n", "[HE2ML] [DEBUG] ", buffer);
     SetConsoleTextAttribute(stdoutHandle, FOREGROUND_WHITE);
     va_end(ap);
 }
@@ -124,7 +111,7 @@ void PrintInfo(const char* text, ...)
         stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     char buffer[512];
     _vsprintf_p(buffer, 512, text, ap);
-    printf("%s%s\n", "[TenpexML] [INFO]  ", buffer);
+    printf("%s%s\n", "[HE2ML] [INFO]  ", buffer);
     va_end(ap);
 }
 
@@ -191,7 +178,8 @@ const char* PathSubString(const char* text)
 }
 
 // TODO: Add caching for Tenpex
-FastcallFunctionPointer(void, criError_NotifyGeneric, (CriErrorLevel level, const CriChar8* error_id, CriError error_no), _acriErr_NotifyGeneric);
+// NOTE: This is actually not criErr_NotifyGeneric
+FastcallFunctionPointer(void, criError_NotifyGeneric, (CriErrorLevel level, const CriChar8* error_id, CriError error_no), _acriErr_Notify);
 HOOK(CriError, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, __int64 hTemplateFile)
 {
     if (CurrentGame != Game_Tenpex)
@@ -282,18 +270,16 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
     return originalcriFsIoWin_Exists(path, exists);
 }
 
-HOOK(void, __fastcall, criErr_NotifyGeneric, _acriErr_NotifyGeneric, CriErrorLevel level, const CriChar8* error_id, CriError error_no)
+HOOK(void, __fastcall, criErr_Notify, _acriErr_Notify, CriErrorLevel level, const CriChar8* error_id, CriUintPtr p1, CriUintPtr p2)
 {
     std::string ss;
-    ss.append("[criErr_NotifyGeneric] Level: %d - ");
+    ss.append("[criErr_Notify] Level: %d - ");
     ss.append(error_id);
     if (level == CRIERR_LEVEL_WARNING)
-        PrintWarn((char*)ss.c_str(), level);
+        PrintWarn((char*)ss.c_str(), level, p1, p2);
     else
-        PrintError((char*)ss.c_str(), level);
+        PrintError((char*)ss.c_str(), level, p1, p2);
 }
-
-static bool directoryBinded = false;
 
 FastcallFunctionPointer(CriError, criFsBinder_BindDirectory, (CriFsBinderHn bndrhn, CriFsBinderHn srcbndrhn, const CriChar8* path, void* work, CriSint32 worksize, CriFsBindId* bndrid), _acriFsBinder_BindDirectory);
 FastcallFunctionPointer(CriError, criFsBinder_GetStatus, (CriFsBindId bndrid, CriFsBinderStatus* status), _acriFsBinder_GetStatus);
@@ -301,7 +287,7 @@ FastcallFunctionPointer(CriError, criFsBinder_SetPriority, (CriFsBindId bndrid, 
 HOOK(CriError, __fastcall, criFsBinder_BindCpk, _acriFsBinder_BindCpk, CriFsBinderHn bndrhn, CriFsBinderHn srcbndrhn, const CriChar8* path, void* work, CriSint32 worksize, CriFsBindId* bndrid)
 {
     // Tenpex does not require binding
-    if (!directoryBinded && CurrentGame != Game_Tenpex)
+    if (!directoryBound && CurrentGame != Game_Tenpex)
     {
         // Someone wants it to say wars
         PrintDebug("Binding Directory: \"wars\"");
@@ -316,7 +302,7 @@ HOOK(CriError, __fastcall, criFsBinder_BindCpk, _acriFsBinder_BindCpk, CriFsBind
         }
         criFsBinder_SetPriority(*bndrid, 70000000);
         PrintDebug("Directory bind completed");
-        directoryBinded = true;
+        directoryBound = true;
     }
     PrintDebug("Binding CPK: \"%s\"", path);
     return originalcriFsBinder_BindCpk(bndrhn, srcbndrhn, path, work, worksize, bndrid);
@@ -330,13 +316,12 @@ HOOK(void*, __fastcall, RunCore, _aRunCore, void* a1)
     return result;
 }
 
-
 void InitLoader()
 {
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
     DO_SIGSCAN(criFsIoWin_Exists2);
     DO_SIGSCAN(crifsiowin_CreateFile2);
-    DO_SIGSCAN(criErr_NotifyGeneric2);
+    DO_SIGSCAN(criErr_Notify2);
     DO_SIGSCAN(criFsBinder_BindDirectory);
     DO_SIGSCAN(criFsBinder_BindCpk);
     DO_SIGSCAN(criFsBinder_SetPriority2);
@@ -348,8 +333,8 @@ void InitLoader()
         DO_SIGSCAN(criFsIoWin_Exists);
     if (!_acrifsiowin_CreateFile2)
         DO_SIGSCAN(crifsiowin_CreateFile);
-    if (!_acriErr_NotifyGeneric2)
-        DO_SIGSCAN(criErr_NotifyGeneric);
+    if (!_acriErr_Notify2)
+        DO_SIGSCAN(criErr_Notify);
     if (!_acriFsBinder_SetPriority2)
         DO_SIGSCAN(criFsBinder_SetPriority);
     if (!_aRunCore2)
@@ -360,7 +345,7 @@ void InitLoader()
     PrintDebug("Scan completed in %d ms", diff.count());
 
     // Link scans
-    LINK_SCAN(criErr_NotifyGeneric, criErr_NotifyGeneric2);
+    LINK_SCAN(criErr_Notify, criErr_Notify2);
     LINK_SCAN(crifsiowin_CreateFile, crifsiowin_CreateFile2);
     LINK_SCAN(criFsIoWin_Exists, criFsIoWin_Exists2);
     LINK_SCAN(criFsBinder_SetPriority, criFsBinder_SetPriority2);
@@ -369,7 +354,7 @@ void InitLoader()
     // Check scans
     CHECK_SCAN(criFsIoWin_Exists);
     CHECK_SCAN(crifsiowin_CreateFile);
-    CHECK_SCAN(criErr_NotifyGeneric);
+    CHECK_SCAN(criErr_Notify);
     CHECK_SCAN(criFsBinder_BindDirectory);
     CHECK_SCAN(criFsBinder_BindCpk);
     CHECK_SCAN(criFsBinder_SetPriority);
@@ -379,7 +364,7 @@ void InitLoader()
     // Install all the needed hooks
     INSTALL_HOOK_SIG(crifsiowin_CreateFile);
     INSTALL_HOOK_SIG(criFsIoWin_Exists);
-    INSTALL_HOOK_SIG(criErr_NotifyGeneric);
+    INSTALL_HOOK_SIG(criErr_Notify);
     INSTALL_HOOK_SIG(criFsBinder_BindCpk);
     INSTALL_HOOK_SIG(RunCore);
 
@@ -387,13 +372,13 @@ void InitLoader()
     UPDATE_FUNCTION_POINTER(criFsBinder_BindDirectory,  _acriFsBinder_BindDirectory);
     UPDATE_FUNCTION_POINTER(criFsBinder_GetStatus,      _acriFsBinder_GetStatus);
     UPDATE_FUNCTION_POINTER(criFsBinder_SetPriority,    _acriFsBinder_SetPriority);
-    UPDATE_FUNCTION_POINTER(criError_NotifyGeneric,     _acriErr_NotifyGeneric);
+    UPDATE_FUNCTION_POINTER(criError_NotifyGeneric,     _acriErr_Notify);
 
     if (CurrentGame == Game_Wars)
         InitLoaderWars();
 }
 
-void indexInclude(string s, int rootIndex)
+void IndexInclude(string s, size_t rootIndex)
 {
     WIN32_FIND_DATAA ffd;
     HANDLE hFind = FindFirstFileA((s + "\\*").c_str(), &ffd);
@@ -405,7 +390,7 @@ void indexInclude(string s, int rootIndex)
         {
             if (ffd.cFileName[0] == '.')
                 continue;
-            indexInclude(s + "\\" + ffd.cFileName, rootIndex);
+            IndexInclude(s + "\\" + ffd.cFileName, rootIndex);
         }
         else
         {
@@ -474,7 +459,7 @@ void InitMods()
             if (dirs == -1)
                 continue;
 
-            for (unsigned int i = 0; i < dirs; i++)
+            for (int i = 0; i < dirs; i++)
             {
                 char key2[14];
                 snprintf(key2, sizeof(key2), "IncludeDir%u", i);
@@ -534,7 +519,7 @@ void InitMods()
                             NULL, error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msgBuffer, 0, NULL);
 
                         std::string msg = "Failed to load " + dllName + "\n" + std::string(msgBuffer, msgSize);
-                        MessageBoxA(NULL, msg.c_str(), "TenpexModLoader", MB_OK);
+                        MessageBoxA(NULL, msg.c_str(), "HE2ModLoader", MB_OK);
 
                         LocalFree(msgBuffer);
                     }
@@ -549,7 +534,7 @@ void InitMods()
     for (auto& value : ReplaceDirs)
     {
         auto root = string(value).substr(0, strlen(value) - 1);
-        indexInclude(root, root.length() + 1);
+        IndexInclude(root, root.length() + 1);
     }
 
 
@@ -615,7 +600,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         if (enableSaveFileRedirection != -1)
             useSaveFilePath = enableSaveFileRedirection != 0;
 
-        PrintInfo("Starting TenpexModLoader %s...", "v2.0");
+        PrintInfo("Starting HE2ModLoader %s...", "v2.0");
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);

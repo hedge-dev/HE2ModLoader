@@ -42,12 +42,12 @@ BEGIN
         BLOCK "0c0904b0"
         BEGIN
             VALUE "CompanyName", "NeverFinishAnything "
-            VALUE "FileDescription", "TenpexModLoader - Mod Loader for Puyo Puyo Tetris 2 and Olympic Games Tokyo 2020"
+            VALUE "FileDescription", "HE2ModLoader - Mod Loader for PC Hedgehog Engine Games"
             VALUE "FileVersion", "2.0.0.0"
-            VALUE "InternalName", "PPT2ML.dll"
-            VALUE "LegalCopyright", "Copyright (C) NeverFinishAnything  2021"
-            VALUE "OriginalFilename", "PPT2ML.dll"
-            VALUE "ProductName", "TenpexModLoader - Mod Loader for Puyo Puyo Tetris 2 and Olympic Games Tokyo 2020"
+            VALUE "InternalName", "HE2ModLoader.dll"
+            VALUE "LegalCopyright", "Copyright (C) NeverFinishAnything 2021"
+            VALUE "OriginalFilename", "HE2ModLoader.dll"
+            VALUE "ProductName", "TenpexModLoader - HE2ModLoader - Mod Loader for PC Hedgehog Engine Games"
             VALUE "ProductVersion", "2.0.0.0"
         END
     END

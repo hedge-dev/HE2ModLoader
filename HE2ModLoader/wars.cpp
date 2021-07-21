@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "wars.h"
-#include <TenpexModLoader.h>
+#include <HE2ModLoader.h>
 #include <string>
 #include <detours.h>
 #include "helpers.h"
@@ -15,19 +15,6 @@ extern bool useSaveFilePath;
 extern void PrintDebug(const char* text, ...);
 extern void PrintInfo(const char* text, ...);
 
-#define DEFINE_SIGSCAN(NAME, BYTES, MASK) \
-const char* _b##NAME = BYTES; \
-const char* _m##NAME = MASK; \
-size_t _a##NAME = 0;
-
-#define DO_SIGSCAN(NAME) _a##NAME = SignatureScanner::FindSignature(BaseAddress, DetourGetModuleSize((HMODULE)BaseAddress), _b##NAME, _m##NAME);
-
-
-#define CHECK_SCAN(NAME) \
-PrintDebug("SIGSCAN: %s: %llX (%llX)", #NAME, _a##NAME, _a##NAME - BaseAddress + 0x140000000); \
-if (!_a##NAME) MessageBoxA(NULL, "Could not find "###NAME"! The modloader may fail to load.", "Scan Error", NULL);
-
-
 // NOTE: This could be a bad idea
 static void* SaveHandle = 0;
 // Wars uses this as the encryption key
@@ -41,11 +28,9 @@ DEFINE_SIGSCAN(sub_140724F60,          "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00
 DEFINE_SIGSCAN(sub_1406E7DF0,          "\x48\x89\x5C\x24\x00\x55\x57\x41\x56\x48\x8D\xAC\x24\x00\x00\x00\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\xD9\xC6\x05\x00\x00\x00\x00\x00\x48\x8D\x0D\x00\x00\x00", "xxxx?xxxxxxxx????xxx????xxxxx?????xxx???")
 
 
-
-BYTE* GuessSaveKey(BYTE* bytes, int* keylen)
+void GuessSaveKey(BYTE* bytes, int* keylen, BYTE* key)
 {
     const char* header = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>";
-    BYTE key[20];
     for (int ii = 0; ii < 20; ++ii)
         for (int i = 0; i < 255; ++i)
             if ((char)(bytes[ii] ^ i) == header[ii])
@@ -57,7 +42,7 @@ BYTE* GuessSaveKey(BYTE* bytes, int* keylen)
         {
             *keylen = i;
             key[*keylen] = 0;
-            return key;
+            return;
         }
     }
     if (key[0] == key[10] && key[1] == key[11])
@@ -66,7 +51,7 @@ BYTE* GuessSaveKey(BYTE* bytes, int* keylen)
         *keylen = 9;
     if (key[0] == key[8] && key[1] == key[9])
         *keylen = 8;
-    return key;
+    return;
 }
 
 void CryptSave(BYTE* buffer, int bufferSize, BYTE* key, int keylen)
@@ -85,7 +70,8 @@ void SwapKeys(BYTE* buffer, int bufferSize, BYTE* key, int keylen)
     {
         PrintInfo("    Key change needed!");
         int oldKeylen = 0;
-        BYTE* oldKey = GuessSaveKey((BYTE*)buffer, &oldKeylen);
+        BYTE oldKey[20];
+        GuessSaveKey((BYTE*)buffer, &oldKeylen, oldKey);
         PrintInfo("    Key: %s -> %s", (char*)oldKey, key);
         // Decrypt
         CryptSave((BYTE*)buffer, bufferSize, oldKey, oldKeylen);
@@ -106,7 +92,6 @@ HOOK(HANDLE, __fastcall, StreamWriterWin32_Open, _aStreamWriterWin32_Open, void*
 
 HOOK(HANDLE, __fastcall, StreamReaderWin32_Open, _aStreamReaderWin32_Open, void* a1, LPCSTR filePath)
 {
-    PrintInfo("%s", filePath);
     if (!strcmp(filePath, saveFilePath->c_str()))
         SaveHandle = a1;
 
@@ -122,7 +107,7 @@ HOOK(__int64, __fastcall, StreamReaderWin32_Read, _aStreamReaderWin32_Read, void
         if (a1 = SaveHandle)
         {
             PrintInfo("Reading Redirected SaveFile...");
-            SwapKeys(buffer, bufferSize, (BYTE*)SteamID, strlen(SteamID));
+            SwapKeys(buffer, bufferSize, (BYTE*)SteamID, (int)strlen(SteamID));
         }
     }
     else
@@ -150,7 +135,7 @@ HOOK(void*, __fastcall, sub_140724F60, _asub_140724F60, void* a1, char** filePat
 }
 
 // Used to get the steam ID
-HOOK(void*, __fastcall, sub_1406E7DF0, _asub_1406E7DF0, void* a1, char* steamID)
+HOOK(void*, __fastcall, sub_1406E7DF0, _asub_1406E7DF0, void* a1, int steamID)
 {
     sprintf(SteamID, "%d", steamID);
     PrintDebug("Loaded ID: %s", SteamID);

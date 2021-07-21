@@ -13,26 +13,32 @@
 #define UPDATE_FUNCTION_POINTER(NAME, ADDRESS) \
 	*((void**)&NAME) = (void*)ADDRESS
 
+#define DEFINE_SIGSCAN(NAME, BYTES, MASK) \
+const char* _b##NAME = BYTES; \
+const char* _m##NAME = MASK; \
+size_t _a##NAME = 0;
+
+#define DO_SIGSCAN(NAME) _a##NAME = SignatureScanner::FindSignature(BaseAddress, DetourGetModuleSize((HMODULE)BaseAddress), _b##NAME, _m##NAME);
+#define LINK_SCAN(MAIN, SUB) if (_a##SUB && !_a##MAIN) _a##MAIN = _a##SUB;
+#define CHECK_SCAN(NAME) \
+PrintDebug("SIGSCAN: %s: %llX (%llX)", #NAME, _a##NAME, _a##NAME - BaseAddress + 0x140000000); \
+if (!_a##NAME) MessageBoxA(NULL, "Could not find "###NAME"! The modloader may fail to load.", "Scan Error", NULL);
+
 
 static inline bool FileExists(const char* fileName)
 {
     return GetFileAttributesA(fileName) != -1;
 }
 
-static inline bool dirExists(const std::string& dirName_in)
+static inline bool DirExists(const std::string& dirName_in)
 {
     DWORD ftyp = GetFileAttributesA(dirName_in.c_str());
     if (ftyp == INVALID_FILE_ATTRIBUTES)
-        return false;  //something is wrong with your path!
-
+        return false;
     if (ftyp & FILE_ATTRIBUTE_DIRECTORY)
-        return true;   // this is a directory!
-
-    return false;    // this is not a directory!
+        return true;
+    return false;
 }
-
-static const int ModLoaderVer = 1;
-static const int GameVer = 0;
 
 enum Game
 {
@@ -68,6 +74,7 @@ typedef uint8_t _BYTE;
 typedef char CriChar8;
 typedef signed int CriSint32;
 typedef unsigned int CriUint32;
+typedef unsigned int* CriUintPtr;
 typedef CriUint32 CriFsBindId;
 typedef void** CriFsBinderHn;
 

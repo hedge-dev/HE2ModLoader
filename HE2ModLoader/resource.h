@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by TenpexModLoader.rc
+// Used by HE2ModLoader.rc
 //
 #define MIN_CODE_VERSION                101
 #define MAX_CODE_VERSION                102

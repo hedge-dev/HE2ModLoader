@@ -600,7 +600,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         if (enableSaveFileRedirection != -1)
             useSaveFilePath = enableSaveFileRedirection != 0;
 
-        PrintInfo("Starting HE2ModLoader %s...", "v2.0");
+        PrintInfo("Starting HE2ModLoader %s...", "v1.0");
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);

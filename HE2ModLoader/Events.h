@@ -3,7 +3,7 @@
 #include <HE2ModLoader.h>
 #include <vector>
 
-extern std::vector<ModCallEvent> modFrameEvents;
+extern std::vector<ModCallEvent> modTickEvents;
 extern std::vector<ModCallEvent> modExitEvents;
 
 /**

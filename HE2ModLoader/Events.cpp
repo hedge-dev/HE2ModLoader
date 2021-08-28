@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Events.h"
 
-std::vector<ModCallEvent> modFrameEvents;
+std::vector<ModCallEvent> modTickEvents;
 std::vector<ModCallEvent> modExitEvents;
 /**
 * Registers an event to the specified event list.

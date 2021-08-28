@@ -25,16 +25,21 @@ using std::string;
 using std::wstring;
 using std::vector;
 
-vector<char*> ReplaceDirs;
-std::map<string, string> FileCache;
+// Base
 bool ConsoleEnabled = false;
-string* saveFilePath = new string();
-bool useSaveFilePath = false;
-bool directoryBound = false;
 HANDLE stdoutHandle = nullptr;
 intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
 ModInfo* ModsInfo;
 Game CurrentGame = Game_Unknown;
+CriFsBindId DirectoryBinderID = NULL;
+
+// File System
+vector<char*> ReplaceDirs;
+std::map<string, string> FileCache;
+
+// Save File
+string* saveFilePath = new string();
+bool useSaveFilePath = false;
 
 // Criware
 DEFINE_SIGSCAN(criFsIoWin_Exists,         "\x48\x89\x5C\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x84\x24\x00\x00\x00\x00\x48\x8B\xDA\x48\x8B\xF9\x48\x85\xC9", "xxxx?xxxx????xxx????xxxxxxx????xxxxxxxxx")
@@ -143,13 +148,12 @@ HOOK(void, __fastcall, SteamAPI_Shutdown, PROC_ADDRESS("steam_api64.dll", "Steam
     originalSteamAPI_Shutdown();
 }
 
-void GetModDirectoryFromCPKREDIR(char* buffer)
+void GetModDirectoryFromConfig(char* buffer)
 {
-    PrintDebug("Loading CPKREDIR Config...");
     INIReader cpkredir("cpkredir.ini");
     auto str = cpkredir.GetString("CPKREDIR", "ModsDbIni", "mods\\ModsDB.ini");
     str = str.substr(0, str.find_last_of("\\"));
-    strcpy_s(buffer, MAX_PATH, str.c_str());
+    strcpy_s(buffer, PATH_LIMIT, str.c_str());
 }
 
 bool CompareModCount(int id, int count, bool reverse)
@@ -180,7 +184,7 @@ const char* PathSubString(const char* text)
 // TODO: Add caching for Tenpex
 // NOTE: This is actually not criErr_NotifyGeneric
 FastcallFunctionPointer(void, criError_NotifyGeneric, (CriErrorLevel level, const CriChar8* error_id, CriError error_no), _acriErr_Notify);
-HOOK(CriError, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, __int64 hTemplateFile)
+HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
     if (CurrentGame != Game_Tenpex)
     {
@@ -211,7 +215,8 @@ HOOK(CriError, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriCh
             }
         }
     }
-    return originalcrifsiowin_CreateFile(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    return originalcrifsiowin_CreateFile(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+        dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
 // TODO: Add caching for Tenpex
@@ -251,8 +256,8 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
             // TODO: Add proper UTF8 support
             //if (crifsiowin_utf8_path)
             //{
-            //    WCHAR buffer[MAX_PATH];
-            //    MultiByteToWideChar(65001, 0, path, strlen(path) + 1, buffer, MAX_PATH);
+            //    WCHAR buffer[PATH_LIMIT];
+            //    MultiByteToWideChar(65001, 0, path, strlen(path) + 1, buffer, PATH_LIMIT);
             //    attributes = GetFileAttributesW(buffer);
             //}
             //else
@@ -267,7 +272,7 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
             return CRIERR_NG;
         }
     }
-    return originalcriFsIoWin_Exists(path, exists);
+    return CRIERR_OK;
 }
 
 HOOK(void, __fastcall, criErr_Notify, _acriErr_Notify, CriErrorLevel level, const CriChar8* error_id, CriUintPtr p1, CriUintPtr p2)
@@ -287,22 +292,21 @@ FastcallFunctionPointer(CriError, criFsBinder_SetPriority, (CriFsBindId bndrid, 
 HOOK(CriError, __fastcall, criFsBinder_BindCpk, _acriFsBinder_BindCpk, CriFsBinderHn bndrhn, CriFsBinderHn srcbndrhn, const CriChar8* path, void* work, CriSint32 worksize, CriFsBindId* bndrid)
 {
     // Tenpex does not require binding
-    if (!directoryBound && CurrentGame != Game_Tenpex)
+    if (!DirectoryBinderID && CurrentGame != Game_Tenpex)
     {
+        PrintDebug("Binding directory...");
         // Someone wants it to say wars
-        PrintDebug("Binding Directory: \"wars\"");
-        criFsBinder_BindDirectory(bndrhn, srcbndrhn, "wars", work, worksize, bndrid);
+        criFsBinder_BindDirectory(bndrhn, nullptr, "wars", work, worksize, &DirectoryBinderID);
         CriFsBinderStatus status = CRIFSBINDER_STATUS_ANALYZE;
         while (status != CRIFSBINDER_STATUS_COMPLETE)
         {
-            criFsBinder_GetStatus(*bndrid, &status);
+            criFsBinder_GetStatus(DirectoryBinderID, &status);
             if (status == CRIFSBINDER_STATUS_ERROR)
                 PrintError("Failed to bind! Mod loading may fail!");
             Sleep(10);
         }
-        criFsBinder_SetPriority(*bndrid, 70000000);
+        criFsBinder_SetPriority(DirectoryBinderID, 70000000);
         PrintDebug("Directory bind completed");
-        directoryBound = true;
     }
     PrintDebug("Binding CPK: \"%s\"", path);
     return originalcriFsBinder_BindCpk(bndrhn, srcbndrhn, path, work, worksize, bndrid);
@@ -311,7 +315,7 @@ HOOK(CriError, __fastcall, criFsBinder_BindCpk, _acriFsBinder_BindCpk, CriFsBind
 HOOK(void*, __fastcall, RunCore, _aRunCore, void* a1)
 {
     void* result = originalRunCore(a1);
-    RaiseEvents(modFrameEvents);
+    RaiseEvents(modTickEvents);
     CommonLoader::CommonLoader::RaiseUpdates();
     return result;
 }
@@ -399,7 +403,6 @@ void IndexInclude(string s, size_t rootIndex)
             FileCache[key] = s + "\\" + ffd.cFileName;
         }
     } while (FindNextFileA(hFind, &ffd) != 0);
-
 }
 
 void InitMods()
@@ -409,16 +412,17 @@ void InitMods()
     ModsInfo->ModList = new vector<Mod*>();
     ModsInfo->CurrentGame = CurrentGame;
     
-    char modsDir[MAX_PATH];
-    GetModDirectoryFromCPKREDIR(modsDir);
+    char modsDir[PATH_LIMIT];
+    GetModDirectoryFromConfig(modsDir);
     INIReader ini((string(modsDir) + "\\ModsDB.ini").c_str());
     
-    char pathbuf[MAX_PATH];
-    GetModuleFileNameA(NULL, pathbuf, MAX_PATH);
+    char pathbuf[PATH_LIMIT];
+    GetModuleFileNameA(NULL, pathbuf, PATH_LIMIT);
     string exePath(pathbuf);
     string exeDir = exePath.substr(0, exePath.find_last_of("\\"));
 
     vector<ModInitEvent> postEvents;
+    vector<string*> strings;
 
     PrintInfo("Loading Mods...");
     int modCount = ini.GetInteger("Main", "ActiveModCount", 0);
@@ -426,9 +430,10 @@ void InitMods()
 
     if (reverse)
         PrintInfo("Mods will now be loaded in Reverse!");
+
     for (int i = (reverse ? (modCount - 1) : 0); CompareModCount(i, modCount, reverse); InDecrease(&i, reverse))
     {
-        char key[14];
+        char key[16];
         snprintf(key, sizeof(key), "ActiveMod%u", i);
 
         auto modKey = ini.GetString("Main", string(key), "");
@@ -452,9 +457,18 @@ void InitMods()
         }
         else
         {
-            const string mod_nameA = modConfig.GetString("Desc", "Title", "");
-            PrintInfo("Loading Mod %d. %s", i, mod_nameA.c_str());
+            auto mod = new Mod();
+            auto modTitle = new string(modConfig.GetString("Desc", "Title", ""));
+            auto modPath = new string(path);
+            PrintInfo("Loading Mod %d. %s", i, modTitle->c_str());
 
+            mod->Name = modTitle->c_str();
+            mod->Path = modPath->c_str();
+            strings.push_back(modTitle);
+            strings.push_back(modPath);
+            ModsInfo->CurrentMod = mod;
+            ModsInfo->ModList->push_back(mod);
+            
             int dirs = modConfig.GetInteger("Main", "IncludeDirCount", -1);
             if (dirs == -1)
                 continue;
@@ -469,8 +483,8 @@ void InitMods()
 
                 SetCurrentDirectoryA(dir.c_str());
                 SetCurrentDirectoryA(path.c_str());
-                char* buffer2 = new char[MAX_PATH];
-                GetCurrentDirectoryA(MAX_PATH, buffer2);
+                char* buffer2 = new char[PATH_LIMIT];
+                GetCurrentDirectoryA(PATH_LIMIT, buffer2);
                 string* replacedir = new string(buffer2);
                 if (CurrentGame == Game_Tenpex)
                     (*replacedir) += "\\raw\\";
@@ -484,7 +498,18 @@ void InitMods()
                 ReplaceDirs.insert(ReplaceDirs.begin(), (char*)replacedir->c_str());
             }
 
-            // Check if the mod has a DLL file.
+            // Check save file
+            auto saveFile = modConfig.GetString("Main", "SaveFile", "");
+            if (!saveFile.empty())
+            {
+                saveFilePath->clear();
+                saveFilePath->append(dir);
+                saveFilePath->append(saveFile);
+                useSaveFilePath = true;
+                PrintInfo("    Using mod save file for redirection.");
+            }
+
+            // Load DLLs
             auto dllFile = modConfig.GetString("Main", "DLLFile", "");
             if (!dllFile.empty())
             {
@@ -494,8 +519,7 @@ void InitMods()
                 string dllName;
                 while (std::getline(stream, dllName, ','))
                 {
-                    if (ConsoleEnabled)
-                        PrintInfo("    Loading DLL: %s", dllName.c_str());
+                    PrintInfo("    Loading DLL: %s", dllName.c_str());
                     HMODULE module = LoadLibraryA((dir + dllName).c_str());
                     if (module)
                     {
@@ -507,7 +531,7 @@ void InitMods()
                         if (postInit)
                             postEvents.push_back(postInit);
 
-                        RegisterEvent(modFrameEvents, module, "OnFrame");
+                        RegisterEvent(modTickEvents, module, "OnFrame");
                         RegisterEvent(modExitEvents, module, "OnExit");
                     }
                     else
@@ -526,10 +550,9 @@ void InitMods()
                 }
             }
         }
-        SetCurrentDirectoryA(exeDir.c_str());
-        for (ModInitEvent event : postEvents)
-            event(ModsInfo);
     }
+
+    SetCurrentDirectoryA(exeDir.c_str());
 
     for (auto& value : ReplaceDirs)
     {
@@ -537,13 +560,20 @@ void InitMods()
         IndexInclude(root, root.length() + 1);
     }
 
+    if (useSaveFilePath)
+        PrintDebug("Save file path is %s", saveFilePath->c_str());
+
+    for (ModInitEvent event : postEvents)
+        event(ModsInfo);
+    for (auto string : strings)
+        delete string;
 
     // Init CommonLoader
     PrintInfo("Loading Codes...");
     CommonLoader::CommonLoader::InitializeAssemblyLoader((string(modsDir) + "\\Codes.dll").c_str());
     CommonLoader::CommonLoader::RaiseInitializers();
 
-    PrintDebug("InitMods() Completed");
+    PrintInfo("Finished loading mods");
 }
 
 BOOL APIENTRY DllMain( HMODULE hModule,
@@ -551,7 +581,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                        LPVOID lpReserved
                      )
 {
-    INIReader cpkredir;
+    INIReader config;
 
     bool useFileLogging = false;
     string logType, logFile, saveFileFallback, saveFileOverride;
@@ -560,13 +590,13 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        cpkredir = INIReader("cpkredir.ini");
+        config = INIReader("cpkredir.ini");
 
-        logType = cpkredir.GetString("CPKREDIR", "LogType", "");
-        logFile = cpkredir.GetString("CPKREDIR", "LogFile", "cpkredir.log");
-        saveFileFallback = cpkredir.GetString("CPKREDIR", "SaveFileFallback", "");
-        saveFileOverride = cpkredir.GetString("CPKREDIR", "SaveFileOverride", "");
-        enableSaveFileRedirection = cpkredir.GetInteger("CPKREDIR", "EnableSaveFileRedirection", -1);
+        logType = config.GetString("CPKREDIR", "LogType", "");
+        logFile = config.GetString("CPKREDIR", "LogFile", "cpkredir.log");
+        saveFileFallback = config.GetString("CPKREDIR", "SaveFileFallback", "");
+        saveFileOverride = config.GetString("CPKREDIR", "SaveFileOverride", "");
+        enableSaveFileRedirection = config.GetInteger("CPKREDIR", "EnableSaveFileRedirection", -1);
 
         if (!logType.empty())
         {
@@ -604,6 +634,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);
+
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:

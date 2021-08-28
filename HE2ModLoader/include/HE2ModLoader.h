@@ -4,6 +4,8 @@
 #include <vector>
 #include <Shlwapi.h>
 
+#define PATH_LIMIT 0x400
+
 #define DataPointer(type, name, address) \
 	static type &name = *(type *)address
 

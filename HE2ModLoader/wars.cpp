@@ -51,7 +51,6 @@ void GuessSaveKey(BYTE* bytes, int* keylen, BYTE* key)
         *keylen = 9;
     if (key[0] == key[8] && key[1] == key[9])
         *keylen = 8;
-    return;
 }
 
 void CryptSave(BYTE* buffer, int bufferSize, BYTE* key, int keylen)
@@ -117,17 +116,17 @@ HOOK(__int64, __fastcall, StreamReaderWin32_Read, _aStreamReaderWin32_Read, void
     return result;
 }
 
-HOOK(void*, __fastcall, sub_140724F60, _asub_140724F60, void* a1, char** filePath)
+HOOK(void*, __fastcall, sub_140724F60, _asub_140724F60, void* a1, const char** filePath)
 {
     void* result = originalsub_140724F60(a1, filePath);
 
-    char mainSavePath[MAX_PATH];
+    char mainSavePath[PATH_LIMIT];
     sprintf(mainSavePath, "%s%s%s", "..\\..\\..\\..\\image\\x64\\raw\\..\\..\\..\\savedata\\", SteamID, "\\savedata.xml");
     
     if (!strcmp(*filePath, mainSavePath))
     {
         if (FileExists(saveFilePath->c_str()))
-            strcpy(*filePath, saveFilePath->c_str());
+            *filePath = saveFilePath->c_str();
         else
             PrintInfo("Redirected save does not exist, your main save file will be read instead!");
     }
@@ -146,14 +145,14 @@ void InitLoaderWars()
 {
     if (useSaveFilePath)
     {
-        // Scan
+        // Scan save hooks
         DO_SIGSCAN(StreamWriterWin32_Open);
         DO_SIGSCAN(StreamReaderWin32_Open);
         DO_SIGSCAN(StreamReaderWin32_Read);
         DO_SIGSCAN(sub_140724F60);
         DO_SIGSCAN(sub_1406E7DF0);
 
-        // Check
+        // Check warning
         if (!_aStreamWriterWin32_Open || !_aStreamReaderWin32_Open ||
             !_aStreamReaderWin32_Read || !_asub_140724F60 || !_asub_1406E7DF0)
         {
@@ -162,7 +161,7 @@ void InitLoaderWars()
             return;
         }
 
-        // Checks
+        // Check scans
         CHECK_SCAN(StreamWriterWin32_Open);
         CHECK_SCAN(StreamReaderWin32_Open);
         CHECK_SCAN(StreamReaderWin32_Read);
@@ -176,13 +175,12 @@ void InitLoaderWars()
         INSTALL_HOOK_SIG(sub_140724F60);
         INSTALL_HOOK_SIG(sub_1406E7DF0);
 
-        // Prepare save path
-        char savePath[MAX_PATH]{};
+        // Prepare default save path
+        char savePath[PATH_LIMIT];
         strcpy(savePath, saveFilePath->c_str());
         saveFilePath->clear();
         saveFilePath->append("..\\..\\..\\..\\");
         saveFilePath->append(savePath);
-        PrintDebug("Save file path is %s", saveFilePath->c_str());
     }
 
 }

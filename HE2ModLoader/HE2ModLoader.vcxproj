@@ -93,6 +93,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="cri.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="helpers.h" />
@@ -103,12 +104,14 @@
     <ClInclude Include="include\MemAccess.h" />
     <ClInclude Include="include\HE2ModLoader.h" />
     <ClInclude Include="include\syelog.h" />
+    <ClInclude Include="loader.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="sigscanner.h" />
     <ClInclude Include="wars.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="cri.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="pch.cpp">

@@ -57,6 +57,12 @@
     <ClInclude Include="wars.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="cri.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="loader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -69,6 +75,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="wars.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cri.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

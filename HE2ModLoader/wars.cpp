@@ -1,19 +1,14 @@
 #include "pch.h"
 #include "wars.h"
-#include <HE2ModLoader.h>
+#include "loader.h"
 #include <string>
 #include <detours.h>
 #include "helpers.h"
 #include "sigscanner.h"
 
-using std::string;
-
 // Import
-extern intptr_t BaseAddress;
 extern string* saveFilePath;
 extern bool useSaveFilePath;
-extern void PrintDebug(const char* text, ...);
-extern void PrintInfo(const char* text, ...);
 
 // NOTE: This could be a bad idea
 static void* SaveHandle = 0;

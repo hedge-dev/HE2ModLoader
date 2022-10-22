@@ -47,7 +47,8 @@ enum Game
     Game_Unknown = 0,
     Game_Wars    = 637100,
     Game_Musashi = 981890,
-    Game_Tenpex  = 1259790
+    Game_Tenpex  = 1259790,
+    Game_P5R     = 1687950
 };
 
 struct Mod

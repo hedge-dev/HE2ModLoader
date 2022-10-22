@@ -37,22 +37,22 @@ static size_t PROCESS_ENTRY = (size_t)DetourGetEntryPoint((HMODULE)BASE_ADDRESS)
 	}
 
 #define VTABLE_HOOK(returnType, callingConvention, className, functionName, ...) \
-	typedef returnType callingConvention functionName(className* This, __VA_ARGS__); \
-	functionName* original##functionName; \
-	returnType callingConvention implOf##functionName(className* This, __VA_ARGS__)
+    typedef returnType callingConvention className##functionName(className* This, __VA_ARGS__); \
+    className##functionName* original##className##functionName; \
+    returnType callingConvention implOf##className##functionName(className* This, __VA_ARGS__)
 
-#define INSTALL_VTABLE_HOOK(object, functionName, functionIndex) \
-	{ \
-		void** addr = &(*(void***)object)[functionIndex]; \
-		if (*addr != implOf##functionName) \
-		{ \
-			original##functionName = (functionName*)*addr; \
-			DWORD oldProtect; \
-			VirtualProtect(addr, sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect); \
-			*addr = implOf##functionName; \
-			VirtualProtect(addr, sizeof(void*), oldProtect, NULL); \
-		} \
-	}
+#define INSTALL_VTABLE_HOOK(className, object, functionName, functionIndex) \
+    { \
+        void** addr = &(*(void***)object)[functionIndex]; \
+        if (*addr != implOf##className##functionName) \
+        { \
+            original##className##functionName = (className##functionName*)*addr; \
+            DWORD oldProtect; \
+            VirtualProtect(addr, sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect); \
+            *addr = implOf##className##functionName; \
+            VirtualProtect(addr, sizeof(void*), oldProtect, &oldProtect); \
+        } \
+    }
 
 #define WRITE_MEMORY(location, ...) \
 	{ \

@@ -24,6 +24,7 @@ using std::wstring;
 
 // Base
 bool ConsoleEnabled = false;
+bool Started = false;
 HANDLE stdoutHandle = nullptr;
 intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
 ModInfo* ModsInfo;
@@ -37,9 +38,6 @@ std::map<string, string> FileCache;
 string* saveFilePath = new string();
 bool useSaveFilePath = false;
 
-// Engine
-DEFINE_SIGSCAN(RunCore,                   "\x40\x53\x48\x83\xEC\x20\x48\x8B\xD9\x48\x8B\x0D\x00\x00\x00\x00\xE8\x00\x00\x00\x00\x48\x8B\x4B\x70\xE8\x00\x00\x00\x00\x48\x8B\x4B\x78\x48\x85\xC9\x74\x10\x48", "xxxxxxxxxxxx????x????xxxxx????xxxxxxxxxx")
-DEFINE_SIGSCAN(RunCore2,                  "\x40\x53\x48\x83\xEC\x40\x48\x8B\x51\x28\x48\x8B\xD9\x48\x8B\x89\x00\x00\x00\x00\x48\x83\xC2\x04\xE8\x00\x00\x00\x00\x48\x8B\x43\x28\x80\x78\x19\x00\x74\x7A\x48", "xxxxxxxxxxxxxxxx????xxxxx????xxxxxxxxxxx")
 
 void PrintError(const char* text, ...)
 {
@@ -112,10 +110,16 @@ HOOK(bool, __fastcall, SteamAPI_RestartAppIfNecessary, PROC_ADDRESS("steam_api64
     std::ofstream ofs("steam_appid.txt");
     ofs << appid;
     ofs.close();
-    CurrentGame = (Game)appid;
-    PrintDebug("Game ID is %d", CurrentGame);
-    InitLoader();
-    InitMods();
+
+    // Prevent the modloader from restarting
+    if (!Started)
+    {
+        Started = true;
+        CurrentGame = (Game)appid;
+        PrintDebug("Game ID is %d", CurrentGame);
+        InitLoader();
+        InitMods();
+    }
     return false;
 }
 
@@ -129,6 +133,51 @@ HOOK(void, __fastcall, SteamAPI_Shutdown, PROC_ADDRESS("steam_api64.dll", "Steam
 {
     RaiseEvents(modExitEvents);
     originalSteamAPI_Shutdown();
+}
+
+VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Flags)
+{
+    RaiseEvents(modTickEvents);
+    CommonLoader::CommonLoader::RaiseUpdates();
+
+    return originalIDXGISwapChainPresent(This, SyncInterval, Flags);
+}
+
+HOOK(HRESULT, WINAPI, _D3D11CreateDeviceAndSwapChain, PROC_ADDRESS("d3d11.dll", "D3D11CreateDeviceAndSwapChain"),
+    IDXGIAdapter* pAdapter,
+    D3D_DRIVER_TYPE DriverType,
+    HMODULE Software,
+    UINT Flags,
+    const D3D_FEATURE_LEVEL* pFeatureLevels,
+    UINT FeatureLevels,
+    UINT SDKVersion,
+    const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+    IDXGISwapChain** ppSwapChain,
+    ID3D11Device** ppDevice,
+    D3D_FEATURE_LEVEL* pFeatureLevel,
+    ID3D11DeviceContext** ppImmediateContext)
+{
+    const HRESULT result = original_D3D11CreateDeviceAndSwapChain(
+        pAdapter,
+        DriverType,
+        Software,
+        Flags,
+        pFeatureLevels,
+        FeatureLevels,
+        SDKVersion,
+        pSwapChainDesc,
+        ppSwapChain,
+        ppDevice,
+        pFeatureLevel,
+        ppImmediateContext);
+    PrintDebug("D3D11CreateDeviceAndSwapChain");
+    if (FAILED(result))
+        return result;
+
+    if (ppSwapChain && *ppSwapChain)
+        INSTALL_VTABLE_HOOK(IDXGISwapChain, *ppSwapChain, Present, 8);
+
+    return result;
 }
 
 void GetModDirectoryFromConfig(char* buffer)
@@ -154,14 +203,6 @@ void InDecrease(int* num, bool decrease)
         (*num)++;
 }
 
-HOOK(void*, __fastcall, RunCore, _aRunCore, void* a1)
-{
-    void* result = originalRunCore(a1);
-    RaiseEvents(modTickEvents);
-    CommonLoader::CommonLoader::RaiseUpdates();
-    return result;
-}
-
 void InitLoader()
 {
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
@@ -171,18 +212,17 @@ void InitLoader()
     if (CurrentGame == Game_Wars)
         InitLoaderWars();
 
-    DO_SIGSCAN(RunCore2);
-
-    if (!_aRunCore2)
-        DO_SIGSCAN(RunCore);
-
-    LINK_SCAN(RunCore, RunCore2);
-    CHECK_SCAN(RunCore);
-    INSTALL_HOOK_SIG(RunCore);
+    INSTALL_HOOK(_D3D11CreateDeviceAndSwapChain);
 
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     PrintInfo("Pre-Initialisation completed in %d ms", diff.count());
+}
+
+bool SupportsSaveRedirection()
+{
+    // Only Sonic Forces supports save redirection
+    return CurrentGame == Game_Wars;
 }
 
 void IndexInclude(string s, size_t rootIndex)
@@ -302,14 +342,17 @@ void InitMods()
             }
 
             // Check save file
-            auto saveFile = modConfig.GetString("Main", "SaveFile", "");
-            if (!saveFile.empty())
+            if (SupportsSaveRedirection())
             {
-                saveFilePath->clear();
-                saveFilePath->append(dir);
-                saveFilePath->append(saveFile);
-                useSaveFilePath = true;
-                PrintInfo("    Using mod save file for redirection.");
+                auto saveFile = modConfig.GetString("Main", "SaveFile", "");
+                if (!saveFile.empty())
+                {
+                    saveFilePath->clear();
+                    saveFilePath->append(dir);
+                    saveFilePath->append(saveFile);
+                    useSaveFilePath = true;
+                    PrintInfo("    Using mod save file for redirection.");
+                }
             }
 
             // Load DLLs
@@ -363,7 +406,7 @@ void InitMods()
         IndexInclude(root, root.length() + 1);
     }
 
-    if (useSaveFilePath)
+    if (SupportsSaveRedirection() && useSaveFilePath)
         PrintDebug("Save file path is %s", saveFilePath->c_str());
 
     for (ModInitEvent event : postEvents)

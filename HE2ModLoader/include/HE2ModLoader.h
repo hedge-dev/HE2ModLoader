@@ -45,10 +45,11 @@ static inline bool DirExists(const std::string& dirName_in)
 enum Game
 {
     Game_Unknown = 0,
-    Game_Wars    = 637100,
-    Game_Musashi = 981890,
-    Game_Tenpex  = 1259790,
-    Game_P5R     = 1687950
+    Game_Wars    = 637100,  // Sonic Forces
+    Game_Musashi = 981890,  // Olympic Games Tokyo 2020
+    Game_Tenpex  = 1259790, // Puyo Puyo Tetris 2
+    Game_Fiber   = 1687950, // Persona 5 Royal
+    Game_Rangers = 1237320  // Sonic Frontiers
 };
 
 struct Mod

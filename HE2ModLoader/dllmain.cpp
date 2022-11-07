@@ -329,7 +329,7 @@ void InitMods()
                 char* buffer2 = new char[PATH_LIMIT];
                 GetCurrentDirectoryA(PATH_LIMIT, buffer2);
                 string* replacedir = new string(buffer2);
-                if (CurrentGame == Game_Tenpex)
+                if (CurrentGame == Game_Tenpex || CurrentGame == Game_Rangers)
                     (*replacedir) += "\\raw\\";
                 else if (CurrentGame == Game_Musashi)
                     (*replacedir) += "\\disk\\musashi_0\\";

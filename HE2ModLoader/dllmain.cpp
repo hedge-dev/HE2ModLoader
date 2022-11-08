@@ -143,40 +143,29 @@ VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Fl
     return originalIDXGISwapChainPresent(This, SyncInterval, Flags);
 }
 
-HOOK(HRESULT, WINAPI, _D3D11CreateDeviceAndSwapChain, PROC_ADDRESS("d3d11.dll", "D3D11CreateDeviceAndSwapChain"),
-    IDXGIAdapter* pAdapter,
-    D3D_DRIVER_TYPE DriverType,
-    HMODULE Software,
-    UINT Flags,
-    const D3D_FEATURE_LEVEL* pFeatureLevels,
-    UINT FeatureLevels,
-    UINT SDKVersion,
-    const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
-    IDXGISwapChain** ppSwapChain,
-    ID3D11Device** ppDevice,
-    D3D_FEATURE_LEVEL* pFeatureLevel,
-    ID3D11DeviceContext** ppImmediateContext)
+VTABLE_HOOK(HRESULT, WINAPI, IDXGIFactory, CreateSwapChain, IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc, IDXGISwapChain** ppSwapChain)
 {
-    const HRESULT result = original_D3D11CreateDeviceAndSwapChain(
-        pAdapter,
-        DriverType,
-        Software,
-        Flags,
-        pFeatureLevels,
-        FeatureLevels,
-        SDKVersion,
-        pSwapChainDesc,
-        ppSwapChain,
-        ppDevice,
-        pFeatureLevel,
-        ppImmediateContext);
-
-    if (FAILED(result))
-        return result;
+    auto result = originalIDXGIFactoryCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
+    PrintDebug("ppSwapChain: %d", ppSwapChain);
 
     if (ppSwapChain && *ppSwapChain)
+    {
         INSTALL_VTABLE_HOOK(IDXGISwapChain, *ppSwapChain, Present, 8);
+    }
+    return result;
+}
 
+HOOK(HRESULT, WINAPI, _CreateDXGIFactory, PROC_ADDRESS("dxgi.dll", "CreateDXGIFactory"),
+    REFIID riid,
+    void** ppFactory)
+{
+    auto result = original_CreateDXGIFactory(riid, ppFactory);
+    PrintDebug("ppFactory: %d", ppFactory);
+
+    if (ppFactory)
+    {
+        INSTALL_VTABLE_HOOK(IDXGIFactory, *ppFactory, CreateSwapChain, 10);
+    }
     return result;
 }
 
@@ -228,7 +217,7 @@ void InitLoader()
     if (CurrentGame == Game_Wars)
         InitLoaderWars();
 
-    INSTALL_HOOK(_D3D11CreateDeviceAndSwapChain);
+    INSTALL_HOOK(_CreateDXGIFactory);
 
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

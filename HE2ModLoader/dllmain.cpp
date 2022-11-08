@@ -8,6 +8,7 @@
 #include "helpers.h"
 #include "cri.h"
 #include "wars.h"
+#include "save.h"
 #include "Events.h"
 #include "sigscanner.h"
 #include <d3d11.h>
@@ -208,6 +209,18 @@ void SetGame(int id)
     }
 }
 
+bool SupportsSaveRedirection()
+{
+    // Only Sonic Forces supports save redirection
+    return CurrentGame == Game_Wars;
+}
+
+bool SupportsSaveRedirectionv2()
+{
+    // Only Sonic Frontiers currently supports this kind of saves
+    return CurrentGame == Game_Rangers;
+}
+
 void InitLoader()
 {
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
@@ -217,17 +230,14 @@ void InitLoader()
     if (CurrentGame == Game_Wars)
         InitLoaderWars();
 
+    if (SupportsSaveRedirectionv2())
+        InitSaveRedirection();
+
     INSTALL_HOOK(_CreateDXGIFactory);
 
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     PrintInfo("Pre-Initialisation completed in %d ms", diff.count());
-}
-
-bool SupportsSaveRedirection()
-{
-    // Only Sonic Forces supports save redirection
-    return CurrentGame == Game_Wars;
 }
 
 void IndexInclude(string s, size_t rootIndex)

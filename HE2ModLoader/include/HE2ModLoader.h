@@ -42,6 +42,46 @@ static inline bool DirExists(const std::string& dirName_in)
     return false;
 }
 
+static inline bool DirExistsW(const std::wstring& dirName_in)
+{
+    DWORD ftyp = GetFileAttributesW(dirName_in.c_str());
+    if (ftyp == INVALID_FILE_ATTRIBUTES)
+        return false;
+    if (ftyp & FILE_ATTRIBUTE_DIRECTORY)
+        return true;
+    return false;
+}
+
+inline std::string GetDirectoryPath(const std::string& path)
+{
+    std::string directoryPath;
+
+    const size_t index = path.find_last_of("\\/");
+    if (index != std::string::npos)
+        directoryPath = path.substr(0, index + 1);
+
+    return directoryPath;
+}
+
+inline std::wstring GetDirectoryPathW(const std::wstring& path)
+{
+    std::wstring directoryPath;
+
+    const size_t index = path.find_last_of(L"\\/");
+    if (index != std::string::npos)
+        directoryPath = path.substr(0, index + 1);
+
+    return directoryPath;
+}
+
+inline std::wstring ConvertMultiByteToWideChar(const std::string& value)
+{
+    WCHAR wideChar[PATH_LIMIT];
+    MultiByteToWideChar(CP_UTF8, 0, value.c_str(), -1, wideChar, _countof(wideChar));
+
+    return std::wstring(wideChar);
+}
+
 enum Game
 {
     Game_Unknown = 0,

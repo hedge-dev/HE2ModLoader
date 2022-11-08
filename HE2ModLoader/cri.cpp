@@ -10,6 +10,7 @@
 using std::string;
 
 CriFsBindId DirectoryBinderID = NULL;
+const char* RawFolder = nullptr;
 
 // Signatures
 DEFINE_SIGSCAN(criFsIoWin_Exists,          "\x48\x89\x5C\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\x05\x00\x00\x00\x00\x48\x33\xC4\x48\x89\x84\x24\x00\x00\x00\x00\x48\x8B\xDA\x48\x8B\xF9\x48\x85\xC9", "xxxx?xxxx????xxx????xxxxxxx????xxxxxxxxx")
@@ -37,18 +38,15 @@ FUNCTION_PTR(void, __fastcall, criError_NotifyGeneric, _acriErr_Notify, CriError
 
 const char* PathSubString(const char* text)
 {
-    if (CurrentGame != Game_Tenpex)
-        return text + 5;
-    const char* result = strstr(text, "raw");
+    const char* result = strstr(text, RawFolder);
     if (result)
         return result + 4;
     return text;
 }
 
-// TODO: Add caching for Tenpex
 HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
-    if (CurrentGame != Game_Tenpex)
+    if (!RawFolder)
     {
         string newPath = path + 5;
         std::transform(newPath.begin(), newPath.end(), newPath.begin(), ::tolower);
@@ -81,11 +79,9 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
         dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
-// TODO: Add caching for Tenpex
-//DataPointer(bool, crifsiowin_utf8_path, ASLR(0x142E54748));
 HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* path, bool* exists)
 {
-    if (CurrentGame != Game_Tenpex)
+    if (!RawFolder)
     {
         *exists = false;
         string newPath = path + 5;
@@ -150,8 +146,7 @@ HOOK(void, __fastcall, criErr_Notify, _acriErr_Notify, CriErrorLevel level, cons
 
 HOOK(CriError, __fastcall, criFsBinder_BindCpk, _acriFsBinder_BindCpk, CriFsBinderHn bndrhn, CriFsBinderHn srcbndrhn, const CriChar8* path, void* work, CriSint32 worksize, CriFsBindId* bndrid)
 {
-    // Tenpex does not require binding
-    if (!DirectoryBinderID && CurrentGame != Game_Tenpex)
+    if (!DirectoryBinderID)
     {
         PrintDebug("Binding directory...");
         void* dirbndr_work = work;
@@ -179,11 +174,14 @@ void InitLoaderCri()
     DO_SIGSCAN(criFsIoWin_Exists2);
     DO_SIGSCAN(crifsiowin_CreateFile2);
     DO_SIGSCAN(criErr_Notify2);
-    DO_SIGSCAN(criFsBinder_BindDirectory);
-    DO_SIGSCAN(criFsBinder_BindCpk);
-    DO_SIGSCAN(criFsBinder_SetPriority2);
-    DO_SIGSCAN(criFsBinder_GetStatus);
-    DO_SIGSCAN(criSmpFsUtl_Alloc);
+    if (!RawFolder)
+    {
+        DO_SIGSCAN(criFsBinder_BindCpk);
+        DO_SIGSCAN(criSmpFsUtl_Alloc);
+        DO_SIGSCAN(criFsBinder_BindDirectory);
+        DO_SIGSCAN(criFsBinder_SetPriority2);
+        DO_SIGSCAN(criFsBinder_GetStatus);
+    }
 
     // Scan other variants 
     if (!_acriFsIoWin_Exists2)
@@ -192,39 +190,54 @@ void InitLoaderCri()
         DO_SIGSCAN(crifsiowin_CreateFile);
     if (!_acriErr_Notify2)
         DO_SIGSCAN(criErr_Notify);
-    if (!_acriFsBinder_SetPriority2)
-        DO_SIGSCAN(criFsBinder_SetPriority);
-    if (!_acriFsBinder_BindDirectory)
-        DO_SIGSCAN(criFsBinder_BindDirectory2);
+    if (!RawFolder)
+    {
+        if (!_acriFsBinder_SetPriority2)
+            DO_SIGSCAN(criFsBinder_SetPriority);
+        if (!_acriFsBinder_BindDirectory)
+            DO_SIGSCAN(criFsBinder_BindDirectory2);
+    }
 
     // Link scans
     LINK_SCAN(criErr_Notify, criErr_Notify2);
     LINK_SCAN(crifsiowin_CreateFile, crifsiowin_CreateFile2);
     LINK_SCAN(criFsIoWin_Exists, criFsIoWin_Exists2);
-    LINK_SCAN(criFsBinder_SetPriority, criFsBinder_SetPriority2);
-    LINK_SCAN(criFsBinder_BindDirectory, criFsBinder_BindDirectory2);
+    if (!RawFolder)
+    {
+        LINK_SCAN(criFsBinder_SetPriority, criFsBinder_SetPriority2);
+        LINK_SCAN(criFsBinder_BindDirectory, criFsBinder_BindDirectory2);
+    }
 
     // Check scans
     CHECK_SCAN(criFsIoWin_Exists);
     CHECK_SCAN(crifsiowin_CreateFile);
     CHECK_SCAN(criErr_Notify);
-    CHECK_SCAN(criFsBinder_BindDirectory);
-    CHECK_SCAN(criFsBinder_BindCpk);
-    CHECK_SCAN(criFsBinder_SetPriority);
-    CHECK_SCAN(criFsBinder_GetStatus);
-    // TODO: Find musashi signatures
-    CHECK_SCAN_OPT(criSmpFsUtl_Alloc);
+    if (!RawFolder)
+    {
+        CHECK_SCAN(criFsBinder_BindDirectory);
+        CHECK_SCAN(criFsBinder_BindCpk);
+        CHECK_SCAN(criFsBinder_SetPriority);
+        CHECK_SCAN(criFsBinder_GetStatus);
+        // TODO: Find musashi signatures
+        CHECK_SCAN_OPT(criSmpFsUtl_Alloc);
+    }
 
     // Install hooks
     INSTALL_HOOK_SIG(crifsiowin_CreateFile);
     INSTALL_HOOK_SIG(criFsIoWin_Exists);
     INSTALL_HOOK_SIG(criErr_Notify);
-    INSTALL_HOOK_SIG(criFsBinder_BindCpk);
+    if (!RawFolder)
+    {
+        INSTALL_HOOK_SIG(criFsBinder_BindCpk);
+    }
 
     // Update function pointers
-    UPDATE_FUNCTION_POINTER(criFsBinder_BindDirectory, _acriFsBinder_BindDirectory);
-    UPDATE_FUNCTION_POINTER(criFsBinder_GetStatus, _acriFsBinder_GetStatus);
-    UPDATE_FUNCTION_POINTER(criFsBinder_SetPriority, _acriFsBinder_SetPriority);
     UPDATE_FUNCTION_POINTER(criError_NotifyGeneric, _acriErr_Notify);
-    UPDATE_FUNCTION_POINTER(criSmpFsUtl_Alloc, _acriSmpFsUtl_Alloc);
+    if (!RawFolder)
+    {
+        UPDATE_FUNCTION_POINTER(criFsBinder_BindDirectory, _acriFsBinder_BindDirectory);
+        UPDATE_FUNCTION_POINTER(criFsBinder_GetStatus, _acriFsBinder_GetStatus);
+        UPDATE_FUNCTION_POINTER(criFsBinder_SetPriority, _acriFsBinder_SetPriority);
+        UPDATE_FUNCTION_POINTER(criSmpFsUtl_Alloc, _acriSmpFsUtl_Alloc);
+    }
 }

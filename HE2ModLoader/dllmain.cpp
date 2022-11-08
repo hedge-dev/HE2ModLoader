@@ -103,6 +103,7 @@ void PrintInfo(const char* text, ...)
 
 void InitMods();
 void InitLoader();
+void SetGame(int id);
 
 HOOK(bool, __fastcall, SteamAPI_RestartAppIfNecessary, PROC_ADDRESS("steam_api64.dll", "SteamAPI_RestartAppIfNecessary"), uint32_t appid)
 {
@@ -115,8 +116,7 @@ HOOK(bool, __fastcall, SteamAPI_RestartAppIfNecessary, PROC_ADDRESS("steam_api64
     if (!Started)
     {
         Started = true;
-        CurrentGame = (Game)appid;
-        PrintDebug("Game ID is %d", CurrentGame);
+        SetGame(appid);
         InitLoader();
         InitMods();
     }
@@ -170,7 +170,7 @@ HOOK(HRESULT, WINAPI, _D3D11CreateDeviceAndSwapChain, PROC_ADDRESS("d3d11.dll", 
         ppDevice,
         pFeatureLevel,
         ppImmediateContext);
-    PrintDebug("D3D11CreateDeviceAndSwapChain");
+
     if (FAILED(result))
         return result;
 
@@ -201,6 +201,22 @@ void InDecrease(int* num, bool decrease)
         (*num)--;
     else
         (*num)++;
+}
+
+void SetGame(int id)
+{
+    CurrentGame = (Game)id;
+    PrintDebug("Game ID is %d", CurrentGame);
+
+    switch (CurrentGame)
+    {
+    case Game_Tenpex:
+    case Game_Rangers:
+        RawFolder = "raw";
+        break;
+    default:
+        break;
+    }
 }
 
 void InitLoader()
@@ -250,7 +266,6 @@ void IndexInclude(string s, size_t rootIndex)
 
 void InitMods()
 {
-    PrintDebug("Loading ModsDB...");
     ModsInfo = new ModInfo();
     ModsInfo->ModList = new vector<Mod*>();
     ModsInfo->CurrentGame = CurrentGame;
@@ -329,7 +344,7 @@ void InitMods()
                 char* buffer2 = new char[PATH_LIMIT];
                 GetCurrentDirectoryA(PATH_LIMIT, buffer2);
                 string* replacedir = new string(buffer2);
-                if (CurrentGame == Game_Tenpex || CurrentGame == Game_Rangers)
+                if (RawFolder)
                     (*replacedir) += "\\raw\\";
                 else if (CurrentGame == Game_Musashi)
                     (*replacedir) += "\\disk\\musashi_0\\";
@@ -476,7 +491,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         if (enableSaveFileRedirection != -1)
             useSaveFilePath = enableSaveFileRedirection != 0;
 
-        PrintInfo("Starting HE2ModLoader %s...", "v1.0.2");
+        PrintInfo("Starting HE2ModLoader %s...", "v1.0.3");
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);

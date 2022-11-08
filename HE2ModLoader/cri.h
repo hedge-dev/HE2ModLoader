@@ -41,5 +41,8 @@ typedef enum
     CRIERR_ENUM_BE_SINT32 = 0x7FFFFFFF
 } CriError;
 
+// Fields
+extern const char* RawFolder;
+
 // Functions
 void InitLoaderCri();

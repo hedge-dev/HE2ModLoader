@@ -13,10 +13,7 @@
 #include "sigscanner.h"
 #include <d3d11.h>
 #include <chrono>
-
-#pragma comment(linker, "/EXPORT:D3D11CreateDevice=C:\\Windows\\System32\\d3d11.D3D11CreateDevice")
-#pragma comment(linker, "/EXPORT:D3D11CoreCreateDevice=C:\\Windows\\System32\\d3d11.D3D11CoreCreateDevice")
-#pragma comment(linker, "/EXPORT:D3D11CreateDeviceAndSwapChain=C:\\Windows\\System32\\d3d11.D3D11CreateDeviceAndSwapChain")
+#include "Direct3DHook.h"
 
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 #define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
@@ -147,7 +144,6 @@ VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Fl
 VTABLE_HOOK(HRESULT, WINAPI, IDXGIFactory, CreateSwapChain, IUnknown* pDevice, DXGI_SWAP_CHAIN_DESC* pDesc, IDXGISwapChain** ppSwapChain)
 {
     auto result = originalIDXGIFactoryCreateSwapChain(This, pDevice, pDesc, ppSwapChain);
-    PrintDebug("ppSwapChain: %d", ppSwapChain);
 
     if (ppSwapChain && *ppSwapChain)
     {
@@ -161,7 +157,6 @@ HOOK(HRESULT, WINAPI, _CreateDXGIFactory, PROC_ADDRESS("dxgi.dll", "CreateDXGIFa
     void** ppFactory)
 {
     auto result = original_CreateDXGIFactory(riid, ppFactory);
-    PrintDebug("ppFactory: %d", ppFactory);
 
     if (ppFactory)
     {
@@ -494,6 +489,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);
+        HookDirectX();
 
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:

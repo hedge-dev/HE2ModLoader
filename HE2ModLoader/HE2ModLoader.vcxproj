@@ -98,6 +98,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cri.h" />
+    <ClInclude Include="Direct3DHook.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="helpers.h" />
@@ -117,6 +118,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cri.cpp" />
+    <ClCompile Include="Direct3DHook.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Events.cpp" />
     <ClCompile Include="pch.cpp">

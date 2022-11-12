@@ -5,6 +5,7 @@
 #include <Shlwapi.h>
 
 #define PATH_LIMIT 0x400
+#define ML_VERSION "1.1.1"
 
 #define DataPointer(type, name, address) \
 	static type &name = *(type *)address

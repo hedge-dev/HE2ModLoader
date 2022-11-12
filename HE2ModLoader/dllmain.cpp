@@ -351,7 +351,7 @@ void InitMods()
             }
 
             // Check save file
-            if (SupportsSaveRedirection())
+            if (SupportsSaveRedirection() || SupportsSaveRedirectionv2())
             {
                 auto saveFile = modConfig.GetString("Main", "SaveFile", "");
                 if (!saveFile.empty())

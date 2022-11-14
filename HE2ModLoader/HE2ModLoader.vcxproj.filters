@@ -69,6 +69,9 @@
     <ClInclude Include="Direct3DHook.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="criAudio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -90,6 +93,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Direct3DHook.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="criAudio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

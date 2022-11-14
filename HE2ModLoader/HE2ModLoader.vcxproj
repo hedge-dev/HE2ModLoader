@@ -73,6 +73,10 @@
       <AdditionalDependencies>detours.lib;syelog.lib;CommonLoader.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../CommonLoader/CommonLoader/$(Platform)/$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -95,9 +99,14 @@
       <AdditionalDependencies>detours.lib;syelog.lib;CommonLoader.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../CommonLoader/CommonLoader/$(Platform)/$(Configuration)/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cri.h" />
+    <ClInclude Include="criAudio.h" />
     <ClInclude Include="Direct3DHook.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="framework.h" />
@@ -118,6 +127,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cri.cpp" />
+    <ClCompile Include="criAudio.cpp" />
     <ClCompile Include="Direct3DHook.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="Events.cpp" />

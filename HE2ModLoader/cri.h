@@ -3,10 +3,12 @@
 // Types
 typedef char CriChar8;
 typedef signed int CriSint32;
+typedef signed long long CriSint64;
 typedef unsigned int CriUint32;
 typedef unsigned int* CriUintPtr;
 typedef CriUint32 CriFsBindId;
 typedef void** CriFsBinderHn;
+typedef HANDLE CriFsFileHn;
 
 typedef enum
 {

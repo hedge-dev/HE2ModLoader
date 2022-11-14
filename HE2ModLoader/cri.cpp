@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "helpers.h"
 #include "sigscanner.h"
+#include "criAudio.h"
 
 using std::string;
 
@@ -44,7 +45,7 @@ const char* PathSubString(const char* text)
     return text;
 }
 
-HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, HANDLE hTemplateFile)
+void FindRedirectedFile(char* path)
 {
     if (!RawFolder)
     {
@@ -75,12 +76,67 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
             }
         }
     }
-    return originalcrifsiowin_CreateFile(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+}
+
+HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, HANDLE hTemplateFile)
+{
+    string oldPath = path;
+    FindRedirectedFile(path);
+    HANDLE handle = originalcrifsiowin_CreateFile(path, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
         dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+    if (handle)
+    {
+        // TODO: Look into getting this working on all AWBs
+        if (EndsWith(oldPath, "bgm.acb") || EndsWith(oldPath, "bgm.awb"))
+        {
+            string basePath = oldPath.substr(0, oldPath.length() - 4);
+            auto audio = GetCriAudioByName(basePath);
+            if (!audio)
+            {
+                // TODO: Check if AWB exists
+                audio = new CriAudio(basePath);
+                // Scan for replacements
+                for (auto& stream : audio->GetStreams())
+                {
+                    char hcaPath[MAX_PATH];
+                    sprintf(hcaPath, "general\\resident_general\\bgm\\%d.hca", stream.id);
+                    FindRedirectedFile(hcaPath);
+                    HANDLE hcaHandle = CreateFileA(hcaPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                    if (hcaHandle != INVALID_HANDLE_VALUE)
+                        audio->ReplaceAudio(stream.id, hcaHandle);
+                }
+
+                // Generate header
+                void* header = audio->GetHeader();
+
+                // Write header to test folder
+                PrintDebug("Dumping header for %s", basePath.c_str());
+                int size = audio->GetHeaderSize();
+                FILE* file;
+                fopen_s(&file, (string("test\\") + basePath.substr(basePath.find_last_of("\\")) + ".bin").c_str(), "wb");
+                if (file)
+                {
+                    fwrite(header, 1, size, file);
+                    fclose(file);
+                }
+            }
+            if (EndsWith(oldPath, ".acb"))
+            {
+                // TODO: Patch the ACB
+            }
+
+            if (EndsWith(oldPath, ".awb"))
+            {
+                audio->SetAWBHandle(handle);
+            }
+        }
+    }
+    return handle;
 }
 
 HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* path, bool* exists)
 {
+    string stdPath = path;
     if (!RawFolder)
     {
         *exists = false;
@@ -96,19 +152,21 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
     else
     {
         DWORD attributes = -1;
-        for (auto& value : ReplaceDirs)
+        if (!EndsWith(stdPath, ".awb") && !EndsWith(stdPath, ".acb"))
         {
-            string filePath = value;
-            filePath += PathSubString(path);
-            attributes = GetFileAttributesA(filePath.c_str());
-            if (attributes != -1)
+            for (auto& value : ReplaceDirs)
             {
-                strcpy(path, filePath.c_str());
-                *exists = true;
-                break;
+                string filePath = value;
+                filePath += PathSubString(path);
+                attributes = GetFileAttributesA(filePath.c_str());
+                if (attributes != -1)
+                {
+                    strcpy(path, filePath.c_str());
+                    *exists = true;
+                    break;
+                }
             }
         }
-
         if (path && attributes == -1)
         {
             // TODO: Add proper UTF8 support
@@ -174,6 +232,7 @@ void InitLoaderCri()
     DO_SIGSCAN(criFsIoWin_Exists2);
     DO_SIGSCAN(crifsiowin_CreateFile2);
     DO_SIGSCAN(criErr_Notify2);
+
     if (!RawFolder)
     {
         DO_SIGSCAN(criFsBinder_BindCpk);
@@ -212,6 +271,7 @@ void InitLoaderCri()
     CHECK_SCAN(criFsIoWin_Exists);
     CHECK_SCAN(crifsiowin_CreateFile);
     CHECK_SCAN(criErr_Notify);
+
     if (!RawFolder)
     {
         CHECK_SCAN(criFsBinder_BindDirectory);
@@ -226,6 +286,7 @@ void InitLoaderCri()
     INSTALL_HOOK_SIG(crifsiowin_CreateFile);
     INSTALL_HOOK_SIG(criFsIoWin_Exists);
     INSTALL_HOOK_SIG(criErr_Notify);
+
     if (!RawFolder)
     {
         INSTALL_HOOK_SIG(criFsBinder_BindCpk);
@@ -240,4 +301,5 @@ void InitLoaderCri()
         UPDATE_FUNCTION_POINTER(criFsBinder_SetPriority, _acriFsBinder_SetPriority);
         UPDATE_FUNCTION_POINTER(criSmpFsUtl_Alloc, _acriSmpFsUtl_Alloc);
     }
+    InitCriAudio();
 }

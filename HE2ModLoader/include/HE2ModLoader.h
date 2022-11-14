@@ -83,6 +83,14 @@ inline std::wstring ConvertMultiByteToWideChar(const std::string& value)
     return std::wstring(wideChar);
 }
 
+inline bool EndsWith(std::string& value, const char* end)
+{
+    std::string str = end;
+    if (str.size() > value.size())
+        return false;
+    return std::equal(str.rbegin(), str.rend(), value.rbegin());
+}
+
 enum Game
 {
     Game_Unknown = 0,

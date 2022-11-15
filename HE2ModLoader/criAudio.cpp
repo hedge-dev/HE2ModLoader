@@ -83,7 +83,7 @@ void CriAudio::ParseAFS2Archive(string filePath)
 
 int CriAudio::GenerateHeader()
 {
-	PrintDebug("Generating Header");
+	PrintDebug("Generating header for %s", basePath.c_str());
 	char* oldBuffer = header;
 	char* buffer = header;
 	// Header
@@ -178,8 +178,21 @@ void CriAudio::SetAWBPosition(LONG position, bool relative)
 
 bool CriAudio::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer)
 {
+	// Read header
+	if (awbPosition < headerSize)
+	{
+		if (size > headerSize - awbPosition)
+			*bytesRead = headerSize - awbPosition;
+		else
+			*bytesRead = size;
+		memcpy(buffer, header, *bytesRead);
+		awbPosition += *bytesRead;
+	}
+	// Read streams
 	for (auto& stream : streamList)
 	{
+		if (awbPosition == stream.emulatedAddress)
+			PrintDebug("Loading stream %d from %s", stream.id, basePath.c_str());
 		if (awbPosition >= stream.emulatedAddress && awbPosition + size < stream.emulatedAddress + stream.fileSize)
 		{
 			unsigned int offset = awbPosition - stream.emulatedAddress;
@@ -233,8 +246,23 @@ HOOK(BOOL, __fastcall, Kernel32ReadFile, PROC_ADDRESS("Kernel32.dll", "ReadFile"
 	return originalKernel32ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 }
 
+HOOK(BOOL, __fastcall, Kernel32CloseHandle, PROC_ADDRESS("Kernel32.dll", "CloseHandle"), HANDLE handle)
+{
+	for (auto& criAudio : CriAudios)
+	{
+		if (handle == criAudio.second->GetAWBHandle())
+		{
+			criAudio.second->SetAWBHandle(nullptr);
+			break;
+		}
+	}
+	return originalKernel32CloseHandle(handle);
+}
+
+
 void InitCriAudio()
 {
 	INSTALL_HOOK(Kernel32ReadFile);
 	INSTALL_HOOK(Kernel32SetFilePointer);
+	INSTALL_HOOK(Kernel32CloseHandle);
 }

@@ -19,7 +19,7 @@ protected:
 	HANDLE mainAwbHandle;
 	string basePath;
 	LONG awbPosition;
-	char header[0x600];
+	char header[0x2000];
 	int headerSize;
 	vector<CriAudioStream> streamList;
 public:

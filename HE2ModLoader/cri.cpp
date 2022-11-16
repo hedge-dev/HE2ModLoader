@@ -86,48 +86,41 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
         dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
     if (handle)
     {
-        if (EndsWith(oldPath, ".acb") || EndsWith(oldPath, ".awb"))
+        if (EndsWith(oldPath, ".acb"))
+        {
+            // TODO
+
+        }
+
+        if (EndsWith(oldPath, ".awb"))
         {
             string basePath = oldPath.substr(0, oldPath.length() - 4);
-            auto audio = GetCriAudioByName(basePath);
-            if (!audio)
-            {
-                if (!FileExists((basePath + ".awb").c_str()))
-                    return handle;
+            if (!FileExists((basePath + ".awb").c_str()))
+                return handle;
                 
-                audio = new CriAudio(basePath);
-                // Scan for replacements
-                for (auto& stream : audio->GetStreams())
-                {
-                    char hcaPath[MAX_PATH];
-                    sprintf(hcaPath, "%s\\%d.hca", basePath.c_str(), stream.id);
-                    FindRedirectedFile(hcaPath);
-                    HANDLE hcaHandle = CreateFileA(hcaPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-                    if (hcaHandle != INVALID_HANDLE_VALUE)
-                        audio->ReplaceAudio(stream.id, hcaHandle);
-                }
-
-                // Generate header
-                void* header = audio->GetHeader();
-
-                // Write header to test folder
-                int size = audio->GetHeaderSize();
-                FILE* file;
-                fopen_s(&file, (string("test\\") + basePath.substr(basePath.find_last_of("\\")) + ".bin").c_str(), "wb");
-                if (file)
-                {
-                    fwrite(header, 1, size, file);
-                    fclose(file);
-                }
-            }
-            if (EndsWith(oldPath, ".acb"))
+            auto audio = (CriAudios[handle] = std::make_unique<CriAudio>(basePath, handle)).get();
+            // Scan for replacements
+            for (auto& stream : audio->GetStreams())
             {
-                // TODO: Patch the ACB
+                char hcaPath[MAX_PATH];
+                sprintf(hcaPath, "%s\\%d.hca", basePath.c_str(), stream.id);
+                FindRedirectedFile(hcaPath);
+                HANDLE hcaHandle = CreateFileA(hcaPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                if (hcaHandle != INVALID_HANDLE_VALUE)
+                    audio->ReplaceAudio(stream.id, hcaHandle);
             }
 
-            if (EndsWith(oldPath, ".awb"))
+            // Generate header
+            void* header = audio->GetHeader();
+
+            // Write header to test folder
+            int size = audio->GetHeaderSize();
+            FILE* file;
+            fopen_s(&file, (string("test\\") + basePath.substr(basePath.find_last_of("\\")) + ".bin").c_str(), "wb");
+            if (file)
             {
-                audio->SetAWBHandle(handle);
+                fwrite(header, 1, size, file);
+                fclose(file);
             }
         }
     }

@@ -21,21 +21,23 @@ protected:
 	LONG awbPosition;
 	char header[0x2000];
 	int headerSize;
+	unsigned short subkey;
 	vector<CriAudioStream> streamList;
 public:
-	CriAudio(string path);
-	~CriAudio();
+	CriAudio(string path, HANDLE handle);
 	void ParseAFS2Archive(string filePath);
 	int GenerateHeader();
 	void* GetHeader();
 	int GetHeaderSize();
-	vector<CriAudioStream> GetStreams();
+	const string& GetName() const;
+	const vector<CriAudioStream>& GetStreams() const;
 	void ReplaceAudio(int id, HANDLE hcaHandle);
 	void SetAWBHandle(HANDLE handle);
-	HANDLE GetAWBHandle();
+	HANDLE GetAWBHandle() const;
 	void SetAWBPosition(LONG position, bool relative);
 	bool ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer);
 };
 
-CriAudio* GetCriAudioByName(string basePath);
+extern std::unordered_map<HANDLE, std::unique_ptr<CriAudio>> CriAudios;
+
 void InitCriAudio();

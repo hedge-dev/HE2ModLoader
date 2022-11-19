@@ -203,6 +203,11 @@ CriAudio::CriAudio(string path, HANDLE handle)
 	mainAwbHandle = CreateFileA((path + ".awb").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 }
 
+CriAudio::~CriAudio()
+{
+	CloseHandle(mainAwbHandle);
+}
+
 HOOK(BOOL, __fastcall, Kernel32SetFilePointer, PROC_ADDRESS("Kernel32.dll", "SetFilePointer"), HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD dwMoveMethod)
 {
 	const auto pair = CriAudios.find(hFile);

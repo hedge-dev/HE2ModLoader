@@ -25,6 +25,7 @@ protected:
 	vector<CriAudioStream> streamList;
 public:
 	CriAudio(string path, HANDLE handle);
+	~CriAudio();
 	void ParseAFS2Archive(string filePath);
 	int GenerateHeader();
 	void* GetHeader();

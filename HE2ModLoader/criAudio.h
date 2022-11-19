@@ -2,6 +2,7 @@
 #include "loader.h"
 #include <unordered_map>
 
+typedef BOOL __fastcall ReadFileType(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped);
 
 struct CriAudioStream
 {
@@ -16,7 +17,6 @@ class CriAudio
 {
 protected:
 	HANDLE awbHandle;
-	HANDLE mainAwbHandle;
 	string basePath;
 	LONG awbPosition;
 	char header[0x2000];
@@ -36,9 +36,29 @@ public:
 	void SetAWBHandle(HANDLE handle);
 	HANDLE GetAWBHandle() const;
 	void SetAWBPosition(LONG position, bool relative);
+	bool ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer, ReadFileType readFile);
+};
+
+class CriACBPatcher
+{
+protected:
+	HANDLE handle;
+	string basePath;
+	LONG currentPosition;
+	LONG awbHeaderPosition;
+	char awbHeader[0x2000];
+	int awbHeaderSize;
+public:
+	CriACBPatcher(string path, HANDLE handle);
+	void ParseACBFile();
+	void LoadCriAudio(CriAudio* audio);
+	void SetHandle(HANDLE handle);
+	HANDLE GetHandle() const;
+	void SetPosition(LONG position, bool relative);
 	bool ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer);
 };
 
-extern std::unordered_map<HANDLE, std::unique_ptr<CriAudio>> CriAudios;
+extern std::unordered_map<HANDLE, std::shared_ptr<CriAudio>> CriAudios;
+extern std::unordered_map<HANDLE, std::shared_ptr<CriACBPatcher>> CriACBPatchers;
 
 void InitCriAudio();

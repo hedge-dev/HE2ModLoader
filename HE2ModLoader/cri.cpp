@@ -78,6 +78,19 @@ void FindRedirectedFile(char* path)
     }
 }
 
+void LoadCriAudioReplacements(CriAudio* audio, std::string basePath)
+{
+    for (auto& stream : audio->GetStreams())
+    {
+        char hcaPath[MAX_PATH];
+        sprintf(hcaPath, "%s\\%d.hca", basePath.c_str(), stream.id);
+        FindRedirectedFile(hcaPath);
+        HANDLE hcaHandle = CreateFileA(hcaPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (hcaHandle != INVALID_HANDLE_VALUE)
+            audio->ReplaceAudio(stream.id, hcaHandle);
+    }
+}
+
 HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, HANDLE hTemplateFile)
 {
     string oldPath = path;
@@ -86,30 +99,41 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
         dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
     if (handle)
     {
+        // TODO: Add caching
         if (EndsWith(oldPath, ".acb"))
         {
-            // TODO
+            string basePath = oldPath.substr(0, oldPath.length() - 4);
+            if (!FileExists((basePath + ".awb").c_str()))
+                return handle;
 
+            auto audio = CriAudio(basePath, handle);
+
+            // Scan for replacements
+            LoadCriAudioReplacements(&audio, basePath);
+
+            // Create patcher
+            auto patcher = (CriACBPatchers[handle] = std::make_shared<CriACBPatcher>(basePath, handle)).get();
+
+            // Load ACB data
+            patcher->ParseACBFile();
+
+            // Load header data
+            patcher->LoadCriAudio(&audio);
         }
 
         if (EndsWith(oldPath, ".awb"))
         {
             string basePath = oldPath.substr(0, oldPath.length() - 4);
+            
+            // TODO: Is this even needed?
             if (!FileExists((basePath + ".awb").c_str()))
                 return handle;
                 
-            auto audio = (CriAudios[handle] = std::make_unique<CriAudio>(basePath, handle)).get();
+            auto audio = (CriAudios[handle] = std::make_shared<CriAudio>(basePath, handle)).get();
+         
             // Scan for replacements
-            for (auto& stream : audio->GetStreams())
-            {
-                char hcaPath[MAX_PATH];
-                sprintf(hcaPath, "%s\\%d.hca", basePath.c_str(), stream.id);
-                FindRedirectedFile(hcaPath);
-                HANDLE hcaHandle = CreateFileA(hcaPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-                if (hcaHandle != INVALID_HANDLE_VALUE)
-                    audio->ReplaceAudio(stream.id, hcaHandle);
-            }
-
+            LoadCriAudioReplacements(audio, basePath);
+            
             // Generate header
             void* header = audio->GetHeader();
 

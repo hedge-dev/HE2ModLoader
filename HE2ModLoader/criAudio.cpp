@@ -2,8 +2,10 @@
 #include "criAudio.h"
 #include "helpers.h"
 #include "sigscanner.h"
+#include <mutex>
 
-std::unordered_map<HANDLE, std::unique_ptr<CriAudio>> CriAudios;
+std::unordered_map<HANDLE, std::shared_ptr<CriAudio>> CriAudios;
+std::unordered_map<HANDLE, std::shared_ptr<CriACBPatcher>> CriACBPatchers;
 
 void SeekForward(FILE* handle, long amount)
 {
@@ -76,7 +78,6 @@ void CriAudio::ParseAFS2Archive(string filePath)
 
 int CriAudio::GenerateHeader()
 {
-	PrintDebug("Generating header for %s", basePath.c_str());
 	char* oldBuffer = header;
 	char* buffer = header;
 	// Header
@@ -142,8 +143,6 @@ const vector<CriAudioStream>& CriAudio::GetStreams() const
 
 void CriAudio::ReplaceAudio(int id, HANDLE hcaHandle)
 {
-	PrintDebug("Replacing audio ID %d for %s", id, basePath.c_str());
-
 	streamList[id].fileHandle = hcaHandle;
 	streamList[id].fileOffset = 0;
 	streamList[id].fileSize = GetFileSize(hcaHandle, NULL);
@@ -174,7 +173,7 @@ void CriAudio::SetAWBPosition(LONG position, bool relative)
 		awbPosition = position;
 }
 
-bool CriAudio::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer)
+bool CriAudio::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer, ReadFileType readFile)
 {
 	// Read streams
 	for (auto& stream : streamList)
@@ -185,10 +184,8 @@ bool CriAudio::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer)
 		{
 			unsigned int offset = awbPosition - stream.emulatedAddress;
 			HANDLE handle = stream.fileHandle;
-			if (handle == awbHandle)
-				handle = mainAwbHandle;
 			SetFilePointer(handle, stream.fileOffset + offset, NULL, FILE_BEGIN);
-			return ReadFile(handle, buffer, size, bytesRead, NULL);
+			return readFile(handle, buffer, size, bytesRead, NULL);
 		}
 	}
 	return false;
@@ -200,41 +197,110 @@ CriAudio::CriAudio(string path, HANDLE handle)
 	memset(header, 0, sizeof(header));
 	ParseAFS2Archive(path + ".awb");
 	SetAWBHandle(handle);
-	mainAwbHandle = CreateFileA((path + ".awb").c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 }
 
 CriAudio::~CriAudio()
 {
-	CloseHandle(mainAwbHandle);
+	// TODO: Close replaced stream handles
 }
+
+CriACBPatcher::CriACBPatcher(string path, HANDLE handle)
+{
+	basePath = path;
+	awbHeaderPosition = -1;
+	memset(awbHeader, 0, sizeof(awbHeader));
+	SetHandle(handle);
+}
+
+void CriACBPatcher::ParseACBFile()
+{
+	// TODO: Actually parse the ACB file
+
+	// TODO: Don't hardcode
+	// Test
+	if (EndsWith(basePath, "resident_general\\bgm"))
+		awbHeaderPosition = 0x55E4;
+}
+
+void CriACBPatcher::LoadCriAudio(CriAudio* audio)
+{
+	awbHeaderSize = audio->GetHeaderSize();
+	memcpy(awbHeader, audio->GetHeader(), awbHeaderSize);
+}
+
+void CriACBPatcher::SetHandle(HANDLE hnd)
+{
+	handle = hnd;
+}
+
+HANDLE CriACBPatcher::GetHandle() const
+{
+	return handle;
+}
+
+void CriACBPatcher::SetPosition(LONG position, bool relative)
+{
+	if (relative)
+		currentPosition += position;
+	else
+		currentPosition = position;
+}
+
+bool CriACBPatcher::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer)
+{
+	if (awbHeaderPosition >= currentPosition && awbHeaderPosition + awbHeaderSize < currentPosition + size)
+	{
+		PrintDebug("Injecting AWB header");
+		int offset = awbHeaderPosition - currentPosition;
+		memcpy(((char*)buffer) + offset, awbHeader, awbHeaderSize);
+
+		return true;
+	}
+	return false;
+}
+
 
 HOOK(BOOL, __fastcall, Kernel32SetFilePointer, PROC_ADDRESS("Kernel32.dll", "SetFilePointer"), HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD dwMoveMethod)
 {
-	const auto pair = CriAudios.find(hFile);
-	if (pair != CriAudios.end())
-		pair->second->SetAWBPosition(lDistanceToMove, dwMoveMethod == FILE_CURRENT);
+	const auto pairAWB = CriAudios.find(hFile);
+	const auto pairACB = CriACBPatchers.find(hFile);
+	if (pairAWB != CriAudios.end())
+		pairAWB->second->SetAWBPosition(lDistanceToMove, dwMoveMethod == FILE_CURRENT);
+	if (pairACB != CriACBPatchers.end())
+		pairACB->second->SetPosition(lDistanceToMove, dwMoveMethod == FILE_CURRENT);
 
 	return originalKernel32SetFilePointer(hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod);
 }
 
 HOOK(BOOL, __fastcall, Kernel32ReadFile, PROC_ADDRESS("Kernel32.dll", "ReadFile"), HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped)
 {
-	const auto pair = CriAudios.find(hFile);
-	if (pair != CriAudios.end())
+	const auto pairAWB = CriAudios.find(hFile);
+	const auto pairACB = CriACBPatchers.find(hFile);
+	if (pairAWB != CriAudios.end())
 	{
-		bool result = pair->second->ReadData(nNumberOfBytesToRead, lpNumberOfBytesRead, lpBuffer);
+		bool result = pairAWB->second->ReadData(nNumberOfBytesToRead, lpNumberOfBytesRead, lpBuffer, originalKernel32ReadFile);
 		SetFilePointer(hFile, nNumberOfBytesToRead, NULL, FILE_CURRENT);
+		return result;
+	}
+	if (pairACB != CriACBPatchers.end())
+	{
+		bool result = originalKernel32ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
+		if (result)
+			pairACB->second->ReadData(nNumberOfBytesToRead, lpNumberOfBytesRead, lpBuffer);
 		return result;
 	}
 	return originalKernel32ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
 }
 
+std::mutex mutex;
+
 HOOK(BOOL, __fastcall, Kernel32CloseHandle, PROC_ADDRESS("Kernel32.dll", "CloseHandle"), HANDLE handle)
 {
+	std::lock_guard lock(mutex);
 	CriAudios.erase(handle);
+	CriACBPatchers.erase(handle);
 	return originalKernel32CloseHandle(handle);
 }
-
 
 void InitCriAudio()
 {

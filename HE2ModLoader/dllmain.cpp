@@ -347,7 +347,7 @@ void InitMods()
                 else
                     (*replacedir) += "\\data\\";
                 PrintDebug("    Added Include: %s", replacedir->c_str());
-                ReplaceDirs.insert(ReplaceDirs.begin(), (char*)replacedir->c_str());
+                ReplaceDirs.push_back((char*)replacedir->c_str());
             }
 
             // Check save file

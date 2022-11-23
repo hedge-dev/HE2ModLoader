@@ -114,9 +114,6 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
             // Create patcher
             auto patcher = (CriACBPatchers[handle] = std::make_shared<CriACBPatcher>(basePath, handle)).get();
 
-            // Load ACB data
-            patcher->ParseACBFile();
-
             // Load header data
             patcher->LoadCriAudio(&audio);
         }

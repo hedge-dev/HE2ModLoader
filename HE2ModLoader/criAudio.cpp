@@ -3,6 +3,7 @@
 #include "helpers.h"
 #include "sigscanner.h"
 #include <mutex>
+#include <algorithm>
 
 std::unordered_map<HANDLE, std::shared_ptr<CriAudio>> CriAudios;
 std::unordered_map<HANDLE, std::shared_ptr<CriACBPatcher>> CriACBPatchers;
@@ -210,16 +211,28 @@ CriACBPatcher::CriACBPatcher(string path, HANDLE handle)
 	awbHeaderPosition = -1;
 	memset(awbHeader, 0, sizeof(awbHeader));
 	SetHandle(handle);
+	ParseACBFile();
 }
 
+// TODO: Actually parse the ACB file
 void CriACBPatcher::ParseACBFile()
 {
-	// TODO: Actually parse the ACB file
+	// Please don't do this
+	int fileSize = GetFileSize(handle, nullptr);
+	auto buffer_ptr = std::unique_ptr<char[]>(new char[fileSize] {});
+	char* buffer = buffer_ptr.get();
+	SetFilePointer(handle, 0, NULL, FILE_BEGIN);
+	if (ReadFile(handle, buffer, fileSize, nullptr, nullptr))
+	{
+		SetFilePointer(handle, 0, NULL, FILE_BEGIN);
 
-	// TODO: Don't hardcode
-	// Test
-	if (EndsWith(basePath, "resident_general\\bgm"))
-		awbHeaderPosition = 0x55E4;
+		char pattern[] = { 0x53, 0x74, 0x72, 0x65, 0x61, 0x6D, 0x41, 0x77, 0x62, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72 }; // StreamAwbHeader
+
+		char* scanPos = std::search(buffer, buffer + fileSize, pattern, pattern + sizeof(pattern));
+
+		if (scanPos != buffer + fileSize)
+			awbHeaderPosition = (LONG)(scanPos - buffer + 0x17);
+	}
 }
 
 void CriACBPatcher::LoadCriAudio(CriAudio* audio)
@@ -279,8 +292,11 @@ HOOK(BOOL, __fastcall, Kernel32ReadFile, PROC_ADDRESS("Kernel32.dll", "ReadFile"
 	if (pairAWB != CriAudios.end())
 	{
 		bool result = pairAWB->second->ReadData(nNumberOfBytesToRead, lpNumberOfBytesRead, lpBuffer, originalKernel32ReadFile);
-		SetFilePointer(hFile, nNumberOfBytesToRead, NULL, FILE_CURRENT);
-		return result;
+		if (result)
+		{
+			SetFilePointer(hFile, nNumberOfBytesToRead, NULL, FILE_CURRENT);
+			return true;
+		}
 	}
 	if (pairACB != CriACBPatchers.end())
 	{

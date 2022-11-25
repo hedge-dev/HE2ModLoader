@@ -36,7 +36,6 @@ unsigned int ReadUInt32(FILE* handle)
 
 void CriAudio::ParseAFS2Archive(string filePath)
 {
-	PrintDebug("Parsing AFS2 archive for %s", filePath.c_str());
 	// Open file
 	FILE* file;
 	fopen_s(&file, filePath.c_str(), "rb");
@@ -174,6 +173,7 @@ void CriAudio::SetAWBPosition(LONG position, bool relative)
 		awbPosition = position;
 }
 
+// TODO: Look into why streams sometimes don't play
 bool CriAudio::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer, ReadFileType readFile)
 {
 	// Read streams
@@ -202,13 +202,19 @@ CriAudio::CriAudio(string path, HANDLE handle)
 
 CriAudio::~CriAudio()
 {
-	// TODO: Close replaced stream handles
+	// Close replaced handles
+	for (auto& stream : streamList)
+	{
+		if (stream.fileHandle != awbHandle)
+			CloseHandle(stream.fileHandle);
+	}
 }
 
 CriACBPatcher::CriACBPatcher(string path, HANDLE handle)
 {
 	basePath = path;
 	awbHeaderPosition = -1;
+	embeddedAwbPosition = -1;
 	memset(awbHeader, 0, sizeof(awbHeader));
 	SetHandle(handle);
 	ParseACBFile();
@@ -222,16 +228,44 @@ void CriACBPatcher::ParseACBFile()
 	auto buffer_ptr = std::unique_ptr<char[]>(new char[fileSize] {});
 	char* buffer = buffer_ptr.get();
 	SetFilePointer(handle, 0, NULL, FILE_BEGIN);
+
 	if (ReadFile(handle, buffer, fileSize, nullptr, nullptr))
 	{
 		SetFilePointer(handle, 0, NULL, FILE_BEGIN);
 
+		// Get AWB header position
 		char pattern[] = { 0x53, 0x74, 0x72, 0x65, 0x61, 0x6D, 0x41, 0x77, 0x62, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72 }; // StreamAwbHeader
 
 		char* scanPos = std::search(buffer, buffer + fileSize, pattern, pattern + sizeof(pattern));
 
 		if (scanPos != buffer + fileSize)
 			awbHeaderPosition = (LONG)(scanPos - buffer + 0x17);
+		else
+			return; // Exit if no header is found
+
+		// Get Embedded AWB
+		char pattern2[] = { 0x41, 0x46, 0x53, 0x32, 0x02, 0x04 }; // AFS2\x02\x04
+
+		scanPos = std::search(buffer, buffer + fileSize, pattern2, pattern2 + sizeof(pattern2));
+
+		if (scanPos != buffer + fileSize && scanPos != (buffer + awbHeaderPosition))
+		{
+			embeddedAwbPosition = (LONG)(scanPos - buffer);
+			int trackCount = *(int*)(scanPos + 0x08);
+			for (int i = 0; i < trackCount; ++i)
+			{
+				CriAudioTrack track;
+				track.id = *(int*)(scanPos + 0x10 + i * 0x02);
+				track.offset = *(int*)(scanPos + 0x10 + trackCount * 0x02 + i * 0x04);
+				track.offset = (track.offset + 31) & ~31; // Apply padding
+				track.size = *(int*)(scanPos + 0x10 + trackCount * 0x02 + (i + 1) * 0x04) - track.offset; // Usually 0x1460
+
+				char* address = scanPos + track.offset;
+				memcpy(track.data, address, track.size);
+
+				embeddedAwbTracks.push_back(track);
+			}
+		}
 	}
 }
 
@@ -239,6 +273,21 @@ void CriACBPatcher::LoadCriAudio(CriAudio* audio)
 {
 	awbHeaderSize = audio->GetHeaderSize();
 	memcpy(awbHeader, audio->GetHeader(), awbHeaderSize);
+
+	// Load custom tracks
+	for (CriAudioTrack& track : embeddedAwbTracks)
+	{
+		for (const CriAudioStream& stream : audio->GetStreams())
+		{
+			if (track.id == stream.id && stream.fileHandle != audio->GetAWBHandle())
+			{
+				PrintDebug("Reading stream %d for ACB injection", stream.id);
+				SetFilePointer(stream.fileHandle, 0, NULL, FILE_BEGIN);
+				if (ReadFile(stream.fileHandle, track.data, track.size, nullptr, NULL))
+					SetFilePointer(stream.fileHandle, 0, NULL, FILE_BEGIN);
+			}
+		}
+	}
 }
 
 void CriACBPatcher::SetHandle(HANDLE hnd)
@@ -261,9 +310,22 @@ void CriACBPatcher::SetPosition(LONG position, bool relative)
 
 bool CriACBPatcher::ReadData(DWORD size, LPDWORD bytesRead, LPVOID buffer)
 {
+	// Inject embedded AWB
+	if (embeddedAwbPosition >= currentPosition)
+	{
+		for (CriAudioTrack& track : embeddedAwbTracks)
+		{
+			if (embeddedAwbPosition + track.offset + track.size <= currentPosition + size)
+			{
+				int offset = (embeddedAwbPosition + track.offset) - currentPosition;
+				memcpy(((char*)buffer) + offset, track.data, track.size);
+			}
+		}
+	}
+
+	// Inject AWB header
 	if (awbHeaderPosition >= currentPosition && awbHeaderPosition + awbHeaderSize < currentPosition + size)
 	{
-		PrintDebug("Injecting AWB header");
 		int offset = awbHeaderPosition - currentPosition;
 		memcpy(((char*)buffer) + offset, awbHeader, awbHeaderSize);
 
@@ -312,7 +374,6 @@ std::mutex mutex;
 
 HOOK(BOOL, __fastcall, Kernel32CloseHandle, PROC_ADDRESS("Kernel32.dll", "CloseHandle"), HANDLE handle)
 {
-	std::lock_guard lock(mutex);
 	CriAudios.erase(handle);
 	CriACBPatchers.erase(handle);
 	return originalKernel32CloseHandle(handle);

@@ -78,8 +78,9 @@ void FindRedirectedFile(char* path)
     }
 }
 
-void LoadCriAudioReplacements(CriAudio* audio, std::string basePath)
+bool LoadCriAudioReplacements(CriAudio* audio, std::string basePath)
 {
+    bool found = false;
     for (auto& stream : audio->GetStreams())
     {
         char hcaPath[MAX_PATH];
@@ -87,8 +88,12 @@ void LoadCriAudioReplacements(CriAudio* audio, std::string basePath)
         FindRedirectedFile(hcaPath);
         HANDLE hcaHandle = CreateFileA(hcaPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hcaHandle != INVALID_HANDLE_VALUE)
+        {
             audio->ReplaceAudio(stream.id, hcaHandle);
+            found = true;
+        }
     }
+    return found;
 }
 
 HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar8* path, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, int dwFlagsAndAttributes, HANDLE hTemplateFile)
@@ -109,13 +114,30 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
             auto audio = CriAudio(basePath, handle);
 
             // Scan for replacements
-            LoadCriAudioReplacements(&audio, basePath);
+            if (!LoadCriAudioReplacements(&audio, basePath))
+                return handle; // Exit if no replacement exists
 
             // Create patcher
             auto patcher = (CriACBPatchers[handle] = std::make_shared<CriACBPatcher>(basePath, handle)).get();
 
             // Load header data
             patcher->LoadCriAudio(&audio);
+
+            // Dump ACB
+            DWORD fileSize = GetFileSize(handle, NULL);
+            char* data = new char[fileSize];
+            SetFilePointer(handle, 0, nullptr, FILE_BEGIN);
+            if (ReadFile(handle, data, fileSize, NULL, NULL))
+            {
+                FILE* file;
+                fopen_s(&file, (string("test\\") + basePath.substr(basePath.find_last_of("\\")) + ".acb").c_str(), "wb");
+                if (file)
+                {
+                    fwrite(data, 1, fileSize, file);
+                    fclose(file);
+                }
+            }
+            delete[] data;
         }
 
         if (EndsWith(oldPath, ".awb"))
@@ -129,10 +151,15 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
             auto audio = (CriAudios[handle] = std::make_shared<CriAudio>(basePath, handle)).get();
          
             // Scan for replacements
-            LoadCriAudioReplacements(audio, basePath);
-            
+            if (!LoadCriAudioReplacements(audio, basePath))
+            {
+                // Don't handle if no replacement exists
+                CriAudios.erase(handle);
+                return handle;
+            }
+
             // Generate header
-            void* header = audio->GetHeader();
+            char* header = (char*)audio->GetHeader();
 
             // Write header to test folder
             int size = audio->GetHeaderSize();

@@ -13,6 +13,14 @@ struct CriAudioStream
 	HANDLE fileHandle;
 };
 
+struct CriAudioTrack
+{
+	unsigned short id;
+	unsigned int size;
+	unsigned int offset;
+	char data[0x2000];
+};
+
 class CriAudio
 {
 protected:
@@ -47,6 +55,8 @@ protected:
 	LONG currentPosition;
 	LONG awbHeaderPosition;
 	char awbHeader[0x2000];
+	LONG embeddedAwbPosition;
+	vector<CriAudioTrack> embeddedAwbTracks;
 	int awbHeaderSize;
 public:
 	CriACBPatcher(string path, HANDLE handle);

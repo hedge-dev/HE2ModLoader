@@ -97,6 +97,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
     <ClInclude Include="cri.h" />
     <ClInclude Include="Direct3DHook.h" />
     <ClInclude Include="Events.h" />
@@ -117,6 +118,7 @@
     <ClInclude Include="wars.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="config.cpp" />
     <ClCompile Include="cri.cpp" />
     <ClCompile Include="Direct3DHook.cpp" />
     <ClCompile Include="dllmain.cpp" />

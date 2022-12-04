@@ -27,12 +27,12 @@ void SetupD3DModuleHooks(HMODULE mod)
 
 void HookDirectX()
 {
-	char windir[MAX_PATH];
-	GetSystemDirectoryA(windir, MAX_PATH);
-	char d3d[MAX_PATH];
-	snprintf(d3d, MAX_PATH, "%s\\d3d11.dll", windir);
-	hD3D = LoadLibraryA(d3d);
-	SetupD3DModuleHooks(hD3D);
+    char windir[MAX_PATH];
+    GetSystemDirectoryA(windir, MAX_PATH);
+    char d3d[MAX_PATH];
+    snprintf(d3d, MAX_PATH, "%s\\d3d11.dll", windir);
+    hD3D = LoadLibraryA(d3d);
+    SetupD3DModuleHooks(hD3D);
 }
 
 extern "C"

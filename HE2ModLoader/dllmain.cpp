@@ -1,6 +1,7 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
 #include "loader.h"
+#include "config.h"
 #include <sstream>
 #include <CommonLoader.h>
 #include <INIReader.h>
@@ -21,10 +22,9 @@
 using std::wstring;
 
 // Base
-bool ConsoleEnabled = false;
 bool Started = false;
-HANDLE stdoutHandle = nullptr;
 intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
+HANDLE stdoutHandle = nullptr;
 ModInfo* ModsInfo;
 Game CurrentGame = Game_Unknown;
 
@@ -35,7 +35,6 @@ std::map<string, string> FileCache;
 // Save File
 string* saveFilePath = new string();
 bool useSaveFilePath = false;
-
 
 void PrintError(const char* text, ...)
 {
@@ -165,14 +164,6 @@ HOOK(HRESULT, WINAPI, _CreateDXGIFactory, PROC_ADDRESS("dxgi.dll", "CreateDXGIFa
     return result;
 }
 
-void GetModDirectoryFromConfig(char* buffer)
-{
-    INIReader cpkredir("cpkredir.ini");
-    auto str = cpkredir.GetString("CPKREDIR", "ModsDbIni", "mods\\ModsDB.ini");
-    str = str.substr(0, str.find_last_of("\\"));
-    strcpy_s(buffer, PATH_LIMIT, str.c_str());
-}
-
 bool CompareModCount(int id, int count, bool reverse)
 {
     if (reverse)
@@ -264,9 +255,7 @@ void InitMods()
     ModsInfo->ModList = new vector<Mod*>();
     ModsInfo->CurrentGame = CurrentGame;
     
-    char modsDir[PATH_LIMIT];
-    GetModDirectoryFromConfig(modsDir);
-    INIReader ini((string(modsDir) + "\\ModsDB.ini").c_str());
+    INIReader ini(ModsDbIniPath);
     
     char pathbuf[PATH_LIMIT];
     GetModuleFileNameA(NULL, pathbuf, PATH_LIMIT);
@@ -291,7 +280,7 @@ void InitMods()
         auto modKey = ini.GetString("Main", string(key), "");
         if (modKey.empty())
         {
-            PrintError("Invalid key mod detected in ModsDB! \"%s\"", key);
+            PrintError("Invalid mod key detected in ModsDB! \"%s\"", key);
             continue;
         }
 
@@ -425,7 +414,7 @@ void InitMods()
 
     // Init CommonLoader
     PrintInfo("Loading Codes...");
-    CommonLoader::CommonLoader::InitializeAssemblyLoader((string(modsDir) + "\\Codes.dll").c_str());
+    CommonLoader::CommonLoader::InitializeAssemblyLoader((GetDirectoryPath(ModsDbIniPath) + "Codes.dll").c_str());
     CommonLoader::CommonLoader::RaiseInitializers();
 
     PrintInfo("Finished loading mods");
@@ -436,54 +425,24 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                        LPVOID lpReserved
                      )
 {
-    INIReader config;
-
-    bool useFileLogging = false;
-    string logType, logFile, saveFileFallback, saveFileOverride;
-    long enableSaveFileRedirection;
-
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
-        config = INIReader("cpkredir.ini");
+        LoadConfig();
 
-        logType = config.GetString("CPKREDIR", "LogType", "");
-        logFile = config.GetString("CPKREDIR", "LogFile", "cpkredir.log");
-        saveFileFallback = config.GetString("CPKREDIR", "SaveFileFallback", "");
-        saveFileOverride = config.GetString("CPKREDIR", "SaveFileOverride", "");
-        enableSaveFileRedirection = config.GetInteger("CPKREDIR", "EnableSaveFileRedirection", -1);
-
-        if (!logType.empty())
-        {
-            ConsoleEnabled = !strcmp(logType.c_str(), "console");
-            useFileLogging = !strcmp(logType.c_str(), "file");
-        }
-
-        if (ConsoleEnabled)
-        {
-            AllocConsole();
-            freopen("CONOUT$", "w", stdout);
-        }
-        if (useFileLogging)
-        {
-            freopen(logFile.c_str(), "w", stdout);
-            ConsoleEnabled = true;
-        }
-
-        if (!saveFileFallback.empty())
+        if (!SaveFileFallback.empty())
         {
             saveFilePath->clear();
-            saveFilePath->append(saveFileFallback);
+            saveFilePath->append(SaveFileFallback);
         }
 
-        if (!saveFileOverride.empty())
+        if (!SaveFileOverride.empty())
         {
             saveFilePath->clear();
-            saveFilePath->append(saveFileOverride);
+            saveFilePath->append(SaveFileOverride);
         }
 
-        if (enableSaveFileRedirection != -1)
-            useSaveFilePath = enableSaveFileRedirection != 0;
+        useSaveFilePath = EnableSaveFileRedirection != 0;
 
         PrintInfo("Starting HE2ModLoader v%s...", ML_VERSION);
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);

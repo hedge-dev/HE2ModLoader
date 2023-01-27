@@ -27,9 +27,6 @@
     <ClInclude Include="include\INIReader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\CommonLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\detours.h">
       <Filter>Header Files</Filter>
     </ClInclude>

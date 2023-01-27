@@ -135,7 +135,7 @@ HOOK(void, __fastcall, SteamAPI_Shutdown, PROC_ADDRESS("steam_api64.dll", "Steam
 VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Flags)
 {
     RaiseEvents(modTickEvents);
-    CommonLoader::CommonLoader::RaiseUpdates();
+    CommonLoader::RaiseUpdates();
 
     return originalIDXGISwapChainPresent(This, SyncInterval, Flags);
 }
@@ -209,6 +209,7 @@ bool SupportsSaveRedirectionv2()
 
 void InitLoader()
 {
+    CommonLoader::Init();
     std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
 
     InitLoaderCri();
@@ -414,8 +415,8 @@ void InitMods()
 
     // Init CommonLoader
     PrintInfo("Loading Codes...");
-    CommonLoader::CommonLoader::InitializeAssemblyLoader((GetDirectoryPath(ModsDbIniPath) + "Codes.dll").c_str());
-    CommonLoader::CommonLoader::RaiseInitializers();
+    CommonLoader::LoadAssembly((GetDirectoryPath(ModsDbIniPath) + "Codes.dll").c_str());
+    CommonLoader::RaiseInitializers();
 
     PrintInfo("Finished loading mods");
 }

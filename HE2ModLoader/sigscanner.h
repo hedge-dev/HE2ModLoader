@@ -1,4 +1,5 @@
 #pragma once
+#include <SigScanner.h>
 
 class SignatureScanner
 {
@@ -13,11 +14,6 @@ public:
 
 	static size_t FindSignature(size_t start, size_t size, const char* sig, const char* mask)
 	{
-		char* data = (char*)start;
-
-		for (size_t i = 0; i < size; i++)
-			if (MemoryCompare((const char*)(data + i), (const char*)sig, mask))
-				return start + i;
-		return NULL;
+		return reinterpret_cast<size_t>(CommonLoader::Scan(sig, mask, strlen(mask), reinterpret_cast<void*>(start), size));
 	}
 };

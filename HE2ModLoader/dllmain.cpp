@@ -11,11 +11,11 @@
 #include "wars.h"
 #include "save.h"
 #include "Events.h"
-#include "sigscanner.h"
 #include <d3d11.h>
 #include <chrono>
 #include "Direct3DHook.h"
 
+CMN_LOADER_DEFINE_API_EXPORT
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
 #define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
 

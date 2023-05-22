@@ -37,4 +37,4 @@ typedef HRESULT(__fastcall CreateDeviceAndSwapChain)(
     void    **ppDevice,
     void    *pFeatureLevel,
     void    **ppImmediateContext);
-void HookDirectX();
+void HookDirectX(void* self);

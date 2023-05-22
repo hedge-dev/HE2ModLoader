@@ -449,7 +449,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);
-        HookDirectX();
+        HookDirectX(hModule);
 
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:

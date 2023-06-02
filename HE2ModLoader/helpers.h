@@ -42,17 +42,16 @@ static size_t PROCESS_ENTRY = (size_t)DetourGetEntryPoint((HMODULE)BASE_ADDRESS)
     returnType callingConvention implOf##className##functionName(className* This, __VA_ARGS__)
 
 #define INSTALL_VTABLE_HOOK(className, object, functionName, functionIndex) \
-    { \
-        void** addr = &(*(void***)object)[functionIndex]; \
-        if (*addr != implOf##className##functionName) \
+    do { \
+        if (original##className##functionName == nullptr) \
         { \
-            original##className##functionName = (className##functionName*)*addr; \
-            DWORD oldProtect; \
-            VirtualProtect(addr, sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProtect); \
-            *addr = implOf##className##functionName; \
-            VirtualProtect(addr, sizeof(void*), oldProtect, &oldProtect); \
+            original##className##functionName = (*(className##functionName***)object)[functionIndex]; \
+            DetourTransactionBegin(); \
+            DetourUpdateThread(GetCurrentThread()); \
+            DetourAttach((void**)&original##className##functionName, implOf##className##functionName); \
+            DetourTransactionCommit(); \
         } \
-    }
+    } while(0)
 
 #define WRITE_MEMORY(location, ...) \
 	{ \

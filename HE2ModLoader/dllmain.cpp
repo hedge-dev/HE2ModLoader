@@ -151,16 +151,58 @@ VTABLE_HOOK(HRESULT, WINAPI, IDXGIFactory, CreateSwapChain, IUnknown* pDevice, D
     return result;
 }
 
-HOOK(HRESULT, WINAPI, _CreateDXGIFactory, PROC_ADDRESS("dxgi.dll", "CreateDXGIFactory"),
-    REFIID riid,
-    void** ppFactory)
+HOOK(HRESULT, WINAPI, _D3D11CreateDevice, PROC_ADDRESS("d3d11.dll", "D3D11CreateDevice"),
+    IDXGIAdapter* pAdapter,
+    D3D_DRIVER_TYPE         DriverType,
+    HMODULE                 Software,
+    UINT                    Flags,
+    const D3D_FEATURE_LEVEL* pFeatureLevels,
+    UINT                    FeatureLevels,
+    UINT                    SDKVersion,
+    ID3D11Device** ppDevice,
+    D3D_FEATURE_LEVEL* pFeatureLevel,
+    ID3D11DeviceContext** ppImmediateContext)
 {
-    auto result = original_CreateDXGIFactory(riid, ppFactory);
+    auto result = original_D3D11CreateDevice(pAdapter, DriverType, Software, Flags, pFeatureLevels, FeatureLevels, SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
 
-    if (ppFactory)
+    if (ppDevice && *ppDevice)
     {
-        INSTALL_VTABLE_HOOK(IDXGIFactory, *ppFactory, CreateSwapChain, 10);
+        IDXGIDevice1* device{};
+        (*ppDevice)->QueryInterface(IID_PPV_ARGS(&device));
+
+        IDXGIAdapter* adapter{};
+        if (device)
+        {
+            device->GetAdapter(&adapter);
+        }
+
+        IDXGIFactory* factory{};
+        if (adapter)
+        {
+            adapter->GetParent(IID_PPV_ARGS(&factory));
+        }
+
+        if (factory)
+        {
+            INSTALL_VTABLE_HOOK(IDXGIFactory, factory, CreateSwapChain, 10);
+        }
+
+        if (device)
+        {
+            device->Release();
+        }
+
+        if (adapter)
+        {
+            adapter->Release();
+        }
+
+        if (factory)
+        {
+            factory->Release();
+        }
     }
+
     return result;
 }
 
@@ -219,8 +261,8 @@ void InitLoader()
 
     if (SupportsSaveRedirectionv2())
         InitSaveRedirection();
-
-    INSTALL_HOOK(_CreateDXGIFactory);
+    
+    INSTALL_HOOK(_D3D11CreateDevice);
 
     std::chrono::time_point<std::chrono::steady_clock> end = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

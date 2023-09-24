@@ -8,6 +8,7 @@ std::string SaveFileFallback;
 std::string SaveFileOverride;
 bool EnableSaveFileRedirection;
 bool ConsoleEnabled = false;
+bool LoaderEnabled;
 
 void LoadConfig()
 {
@@ -19,7 +20,11 @@ void LoadConfig()
     SaveFileFallback = config.GetString("CPKREDIR", "SaveFileFallback", "");
     SaveFileOverride = config.GetString("CPKREDIR", "SaveFileOverride", "");
     EnableSaveFileRedirection = config.GetBoolean("CPKREDIR", "EnableSaveFileRedirection", false);
+    LoaderEnabled = config.GetBoolean("CPKREDIR", "Enabled", true);
     bool useFileLogging = false;
+
+    if (!LoaderEnabled)
+        return;
 
     // Do not use cpkredir.sav, should nolonger be needed
     if (SaveFileFallback.find("cpkredir.sav") != std::string::npos)

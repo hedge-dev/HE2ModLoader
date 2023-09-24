@@ -473,6 +473,12 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
         LoadConfig();
 
+        if (!LoaderEnabled)
+        {
+            HookDirectX(hModule);
+            break;
+        }
+
         if (!SaveFileFallback.empty())
         {
             saveFilePath->clear();

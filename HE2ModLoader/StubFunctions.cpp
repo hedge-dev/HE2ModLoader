@@ -1,8 +1,7 @@
 #include "pch.h"
-#include "Direct3DHook.h"
-#include "windows.h"
-#include "stdio.h"
-#include <Unknwn.h>
+#include <cassert>
+#include <HE2ModLoader.h>
+#include "StubFunctions.h"
 #include "detours.h"
 
 #pragma warning(disable:6387)
@@ -64,14 +63,18 @@ extern "C"
     MAKE_STUB(EnableFeatureLevelUpgrade);
     MAKE_STUB(OpenAdapter10);
     MAKE_STUB(OpenAdapter10_2);
+
+    // dinput8.dll
+    MAKE_STUB(DirectInput8Create);
 }
 
-
-void ResolveStubMethods(void* self, void* module)
+void ResolveStubMethods(void* module)
 {
 #define MAP(MODULE, ADDRESS) ((char*)(MODULE) + (unsigned)(ADDRESS))
 
-    HMODULE executingModule = (HMODULE)self;
+    HMODULE executingModule{};
+    const BOOL result = GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCSTR>(ResolveStubMethods), &executingModule);
+    assert(result);
 
     const auto* header = reinterpret_cast<IMAGE_DOS_HEADER*>(executingModule);
     const auto* ntHeader = reinterpret_cast<IMAGE_NT_HEADERS*>(MAP(executingModule, header->e_lfanew));
@@ -98,16 +101,25 @@ void ResolveStubMethods(void* self, void* module)
             DetourTransactionCommit();
         }
     }
-}
 
 #undef MAP
+}
 
-void HookDirectX(void* self)
+void HookSystemDLL(HMODULE handle)
 {
-    char windir[MAX_PATH];
-    GetSystemDirectoryA(windir, MAX_PATH);
-    char d3d[MAX_PATH];
-    snprintf(d3d, MAX_PATH, "%s\\d3d11.dll", windir);
-    hD3D = LoadLibraryA(d3d);
-    ResolveStubMethods(self, hD3D);
+    // Module name
+    char modulePath[PATH_LIMIT] {};
+    GetModuleFileNameA(handle, modulePath, sizeof(modulePath));
+    char* moduleName = PathFindFileNameA(modulePath);
+
+    // System directory
+    char systemDir[PATH_LIMIT] {};
+    GetSystemDirectoryA(systemDir, sizeof(systemDir));
+
+    // Create path
+    char systemDLLPath[PATH_LIMIT];
+    snprintf(systemDLLPath, PATH_LIMIT, "%s\\%s", systemDir, moduleName);
+
+    // Create hooks
+    ResolveStubMethods(LoadLibraryA(systemDLLPath));
 }

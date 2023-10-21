@@ -63,7 +63,7 @@
     <ClInclude Include="save.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Direct3DHook.h">
+    <ClInclude Include="StubFunctions.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="config.h">
@@ -89,7 +89,7 @@
     <ClCompile Include="save.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Direct3DHook.cpp">
+    <ClCompile Include="StubFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="config.cpp">

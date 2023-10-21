@@ -13,7 +13,7 @@
 #include "Events.h"
 #include <d3d11.h>
 #include <chrono>
-#include "Direct3DHook.h"
+#include "StubFunctions.h"
 
 CMN_LOADER_DEFINE_API_EXPORT
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
@@ -473,11 +473,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
         LoadConfig();
 
+        HookSystemDLL(hModule);
         if (!LoaderEnabled)
-        {
-            HookDirectX(hModule);
             break;
-        }
 
         if (!SaveFileFallback.empty())
         {
@@ -497,8 +495,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
         INSTALL_HOOK(SteamAPI_IsSteamRunning);
         INSTALL_HOOK(SteamAPI_Shutdown);
-        HookDirectX(hModule);
 
+        break;
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:

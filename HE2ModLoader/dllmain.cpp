@@ -14,6 +14,7 @@
 #include <d3d11.h>
 #include <chrono>
 #include "StubFunctions.h"
+#include "epic.h"
 
 CMN_LOADER_DEFINE_API_EXPORT
 #define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
@@ -27,6 +28,7 @@ intptr_t BaseAddress = (intptr_t)GetModuleHandle(nullptr);
 HANDLE stdoutHandle = nullptr;
 ModInfo* ModsInfo;
 Game CurrentGame = Game_Unknown;
+Platform CurrentPlatform = Platform_Steam;
 
 // File System
 vector<char*> ReplaceDirs;
@@ -101,6 +103,7 @@ void PrintInfo(const char* text, ...)
 void InitMods();
 void InitLoader();
 void SetGame(int id);
+void SetGameEGS(const char* id);
 
 HOOK(bool, __fastcall, SteamAPI_RestartAppIfNecessary, PROC_ADDRESS("steam_api64.dll", "SteamAPI_RestartAppIfNecessary"), uint32_t appid)
 {
@@ -130,6 +133,26 @@ HOOK(void, __fastcall, SteamAPI_Shutdown, PROC_ADDRESS("steam_api64.dll", "Steam
 {
     RaiseEvents(modExitEvents);
     originalSteamAPI_Shutdown();
+}
+
+HOOK(int64_t, __fastcall, EOS_Initialize, PROC_ADDRESS("EOSSDK-Win64-Shipping.dll", "EOS_Initialize"), EOS_InitializeOptions options)
+{
+    // Prevent the modloader from restarting
+    if (!Started)
+    {
+        Started = true;
+        SetGameEGS(options.productName);
+        InitLoader();
+        InitMods();
+    }
+
+    return originalEOS_Initialize(options);
+}
+
+HOOK(int64_t, __fastcall, EOS_Shutdown, PROC_ADDRESS("EOSSDK-Win64-Shipping.dll", "EOS_Shutdown"))
+{
+    RaiseEvents(modExitEvents);
+    return originalEOS_Shutdown();
 }
 
 VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Flags)
@@ -223,8 +246,11 @@ void InDecrease(int* num, bool decrease)
 
 void SetGame(int id)
 {
-    CurrentGame = (Game)id;
-    PrintDebug("Game ID is %d", CurrentGame);
+    if (CurrentPlatform == Platform_Steam)
+    {
+        CurrentGame = (Game)id;
+        PrintDebug("Game ID is %d", CurrentGame);
+    }
 
     switch (CurrentGame)
     {
@@ -235,6 +261,18 @@ void SetGame(int id)
     default:
         break;
     }
+}
+
+void SetGameEGS(const char* id)
+{
+    PrintDebug("Product Name is %s", id);
+
+    if (!strcmp(id, "Sonic Frontiers"))
+        CurrentGame = Game_Rangers;
+    else
+        CurrentGame = Game_Unknown;
+
+    SetGame((int)CurrentGame);
 }
 
 bool SupportsSaveRedirection()
@@ -492,9 +530,24 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         useSaveFilePath = EnableSaveFileRedirection != 0;
 
         PrintInfo("Starting HE2ModLoader v%s...", ML_VERSION);
-        INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
-        INSTALL_HOOK(SteamAPI_IsSteamRunning);
-        INSTALL_HOOK(SteamAPI_Shutdown);
+
+        // Detect Epic
+        if (PROC_ADDRESS("EOSSDK-Win64-Shipping.dll", "EOS_Initialize"))
+            CurrentPlatform = Platform_Epic;
+
+        switch (CurrentPlatform)
+        {
+            case Platform_Steam:
+                INSTALL_HOOK(SteamAPI_RestartAppIfNecessary);
+                INSTALL_HOOK(SteamAPI_IsSteamRunning);
+                INSTALL_HOOK(SteamAPI_Shutdown);
+                break;
+
+            case Platform_Epic:
+                INSTALL_HOOK(EOS_Initialize);
+                INSTALL_HOOK(EOS_Shutdown);
+                break;
+        }
 
         break;
     case DLL_THREAD_ATTACH:

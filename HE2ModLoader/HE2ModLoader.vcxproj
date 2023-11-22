@@ -101,6 +101,7 @@
   <ItemGroup>
     <ClInclude Include="config.h" />
     <ClInclude Include="cri.h" />
+    <ClInclude Include="epic.h" />
     <ClInclude Include="StubFunctions.h" />
     <ClInclude Include="Events.h" />
     <ClInclude Include="framework.h" />

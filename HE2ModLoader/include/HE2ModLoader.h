@@ -5,7 +5,7 @@
 #include <Shlwapi.h>
 
 #define PATH_LIMIT 0x400
-#define ML_VERSION "1.1.7"
+#define ML_VERSION "1.2.0"
 
 #define DataPointer(type, name, address) \
 	static type &name = *(type *)address
@@ -83,6 +83,12 @@ inline std::wstring ConvertMultiByteToWideChar(const std::string& value)
     return std::wstring(wideChar);
 }
 
+enum Platform
+{
+    Platform_Steam = 0,
+    Platform_Epic = 1
+};
+
 enum Game
 {
     Game_Unknown = 0,
@@ -103,6 +109,7 @@ struct ModInfo
     std::vector<Mod*>* ModList;
     Mod* CurrentMod;
     Game CurrentGame;
+    Platform CurrentPlatform;
 };
 
 typedef void(__cdecl* ModInitEvent)(ModInfo* modInfo);

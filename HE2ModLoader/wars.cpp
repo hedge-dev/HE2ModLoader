@@ -21,6 +21,7 @@ DEFINE_SIGSCAN(StreamReaderWin32_Open, "\x40\x53\x48\x81\xEC\x00\x00\x00\x00\x48
 DEFINE_SIGSCAN(StreamReaderWin32_Read, "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x83\xEC\x30\x48\x8B\x01\x4C\x89\xC7\x48\x89\xD6\x48\x89\xCB\xFF\x50\x10\x84\xC0\x0F\x85\x00\x00\x00\x00\x31\xC0", "xxxx?xxxx?xxxxxxxxxxxxxxxxxxxxxxxx????xx")
 DEFINE_SIGSCAN(sub_140724F60,          "\x48\x89\x5C\x24\x00\x48\x89\x74\x24\x00\x57\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\xFA\x48\x8B\xD9\xE8\x00\x00\x00\x00\x48\x8B\xC8\xE8\x00\x00\x00\x00\x48\x8D\x4C", "xxxx?xxxx?xxxx????xxxxxxx????xxxx????xxx")
 DEFINE_SIGSCAN(sub_1406E7DF0,          "\x48\x89\x5C\x24\x00\x55\x57\x41\x56\x48\x8D\xAC\x24\x00\x00\x00\x00\x48\x81\xEC\x00\x00\x00\x00\x48\x8B\xD9\xC6\x05\x00\x00\x00\x00\x00\x48\x8D\x0D\x00\x00\x00", "xxxx?xxxxxxxx????xxx????xxxxx?????xxx???")
+DEFINE_SIGSCAN(AntiDebug,              "\x48\x89\x4C\x24\x08\x48\x83\xEC\x48\xE8", "xxxxxxxxxx")
 
 
 void GuessSaveKey(BYTE* bytes, int* keylen, BYTE* key)
@@ -136,8 +137,19 @@ HOOK(void*, __fastcall, sub_1406E7DF0, _asub_1406E7DF0, void* a1, int steamID)
     return originalsub_1406E7DF0(a1, steamID);
 }
 
+// Disable anti-debug code
+HOOK(int64_t, __stdcall, AntiDebug, _aAntiDebug)
+{
+    return 0;
+}
+
 void InitLoaderWars()
 {
+    // Anti-debug hooks
+    DO_SIGSCAN(AntiDebug);
+    CHECK_SCAN(AntiDebug);
+    INSTALL_HOOK_SIG(AntiDebug);
+
     if (useSaveFilePath)
     {
         // Scan save hooks
@@ -177,5 +189,4 @@ void InitLoaderWars()
         saveFilePath->append("..\\..\\..\\..\\");
         saveFilePath->append(savePath);
     }
-
 }

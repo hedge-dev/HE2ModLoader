@@ -45,7 +45,7 @@ BEGIN
             VALUE "FileDescription", "HE2ModLoader - Mod Loader for PC Hedgehog Engine 2 Games"
             VALUE "FileVersion", "1.3.0.0"
             VALUE "InternalName", "HE2ModLoader.dll"
-            VALUE "LegalCopyright", "Copyright (C) NeverFinishAnything 2023"
+            VALUE "LegalCopyright", "Copyright (C) NeverFinishAnything 2024"
             VALUE "OriginalFilename", "HE2ModLoader.dll"
             VALUE "ProductName", "HE2ModLoader - Mod Loader for PC Hedgehog Engine 2 Games"
             VALUE "ProductVersion", "1.3.0.0"

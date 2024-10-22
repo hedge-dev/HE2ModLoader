@@ -256,6 +256,7 @@ void SetGame(int id)
     {
     case Game_Tenpex:
     case Game_Rangers:
+    case Game_Miller:
         RawFolder = "raw";
         break;
     default:

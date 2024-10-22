@@ -95,7 +95,8 @@ enum Game
     Game_Wars    = 637100,  // Sonic Forces
     Game_Musashi = 981890,  // Olympic Games Tokyo 2020
     Game_Tenpex  = 1259790, // Puyo Puyo Tetris 2
-    Game_Rangers = 1237320  // Sonic Frontiers
+    Game_Rangers = 1237320, // Sonic Frontiers
+    Game_Miller  = 2513280  // SONIC X SHADOW GENERATIONS
 };
 
 struct Mod

@@ -75,6 +75,24 @@ inline std::wstring GetDirectoryPathW(const std::wstring& path)
     return directoryPath;
 }
 
+inline std::string GetFileName(const std::string& path, bool withoutExtension = false)
+{
+    std::string filePath;
+
+    const size_t pathIndex = path.find_last_of("\\/");
+    if (pathIndex != std::string::npos)
+        filePath = path.substr(pathIndex + 1);
+
+    if (withoutExtension)
+    {
+        const size_t dotIndex = filePath.find_last_of(".");
+        if (dotIndex != std::string::npos)
+            filePath = filePath.substr(0, dotIndex);
+    }
+
+    return filePath;
+}
+
 inline std::wstring ConvertMultiByteToWideChar(const std::string& value)
 {
     WCHAR wideChar[PATH_LIMIT];

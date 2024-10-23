@@ -256,6 +256,7 @@ void SetGame(int id)
     {
     case Game_Tenpex:
     case Game_Rangers:
+    case Game_Miller:
         RawFolder = "raw";
         break;
     default:
@@ -501,6 +502,13 @@ void InitMods()
     PrintInfo("Finished loading mods");
 }
 
+std::string GetHostModuleName()
+{
+    char path[MAX_PATH];
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+    return GetFileName(path, true);
+}
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -509,9 +517,15 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+        HookSystemDLL(hModule);
+
+        // Detach if Sonic Generations (2024).
+        // TODO: load HE1ML instead.
+        if (GetHostModuleName() == "SONIC_GENERATIONS")
+            break;
+
         LoadConfig();
 
-        HookSystemDLL(hModule);
         if (!LoaderEnabled)
             break;
 

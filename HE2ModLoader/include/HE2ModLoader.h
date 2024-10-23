@@ -5,7 +5,7 @@
 #include <Shlwapi.h>
 
 #define PATH_LIMIT 0x400
-#define ML_VERSION "1.2.0"
+#define ML_VERSION "1.3.0"
 
 #define DataPointer(type, name, address) \
 	static type &name = *(type *)address
@@ -75,6 +75,24 @@ inline std::wstring GetDirectoryPathW(const std::wstring& path)
     return directoryPath;
 }
 
+inline std::string GetFileName(const std::string& path, bool withoutExtension = false)
+{
+    std::string filePath;
+
+    const size_t pathIndex = path.find_last_of("\\/");
+    if (pathIndex != std::string::npos)
+        filePath = path.substr(pathIndex + 1);
+
+    if (withoutExtension)
+    {
+        const size_t dotIndex = filePath.find_last_of(".");
+        if (dotIndex != std::string::npos)
+            filePath = filePath.substr(0, dotIndex);
+    }
+
+    return filePath;
+}
+
 inline std::wstring ConvertMultiByteToWideChar(const std::string& value)
 {
     WCHAR wideChar[PATH_LIMIT];
@@ -95,7 +113,8 @@ enum Game
     Game_Wars    = 637100,  // Sonic Forces
     Game_Musashi = 981890,  // Olympic Games Tokyo 2020
     Game_Tenpex  = 1259790, // Puyo Puyo Tetris 2
-    Game_Rangers = 1237320  // Sonic Frontiers
+    Game_Rangers = 1237320, // Sonic Frontiers
+    Game_Miller  = 2513280  // SONIC X SHADOW GENERATIONS
 };
 
 struct Mod

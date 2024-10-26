@@ -270,6 +270,8 @@ void SetGameEGS(const char* id)
 
     if (!strcmp(id, "Sonic Frontiers"))
         CurrentGame = Game_Rangers;
+    else if (!strcmp(id, "SONIC X SHADOW GENERATIONS"))
+        CurrentGame = Game_Miller;
     else
         CurrentGame = Game_Unknown;
 

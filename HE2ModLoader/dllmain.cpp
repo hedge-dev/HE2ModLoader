@@ -286,8 +286,8 @@ bool SupportsSaveRedirection()
 
 bool SupportsSaveRedirectionv2()
 {
-    // Only Sonic Frontiers currently supports this kind of saves
-    return CurrentGame == Game_Rangers;
+    // Only Rangers and Miller currently supports this kind of saves
+    return CurrentGame == Game_Rangers || CurrentGame == Game_Miller;
 }
 
 void InitLoader()

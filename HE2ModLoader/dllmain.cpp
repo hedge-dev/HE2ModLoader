@@ -327,8 +327,10 @@ void IndexInclude(string s, size_t rootIndex)
         else
         {
             string key = (s + "\\" + ffd.cFileName).substr(rootIndex);
+            string value = s + "\\" + ffd.cFileName;
             std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-            FileCache[key] = s + "\\" + ffd.cFileName;
+            std::replace(value.begin(), value.end(), '/', '\\');
+            FileCache[key] = value;
         }
     } while (FindNextFileA(hFind, &ffd) != 0);
 }
@@ -339,6 +341,7 @@ void InitMods()
     ModsInfo->ModList = new vector<Mod*>();
     ModsInfo->CurrentGame = CurrentGame;
     
+    PrintDebug("ModsDB: %s", ModsDbIniPath.c_str());
     INIReader ini(ModsDbIniPath);
     
     char pathbuf[PATH_LIMIT];
@@ -369,8 +372,8 @@ void InitMods()
         }
 
         string path = ini.GetString("Mods", modKey, "");
-        string dir = path.substr(0, path.find_last_of("\\")) + "\\";
-        std::replace(path.begin(), path.end(), '/', '\\');
+        path = ConvertUnixToWindows(path);
+        string dir = GetDirectoryPath(path);
 
         INIReader modConfig(path);
 

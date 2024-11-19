@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <vector>
@@ -91,6 +92,18 @@ inline std::string GetFileName(const std::string& path, bool withoutExtension = 
     }
 
     return filePath;
+}
+
+static std::string ConvertUnixToWindows(std::string unixPath, bool isDirectory = false)
+{
+    std::string result = unixPath;
+    std::replace(result.begin(), result.end(), '/', '\\');
+
+    // Lets hope nobody removes the Z: mount
+    if (unixPath.length() > 0 && unixPath.at(0) == '/')
+        result = "Z:" + result;
+
+    return result;
 }
 
 inline std::wstring ConvertMultiByteToWideChar(const std::string& value)

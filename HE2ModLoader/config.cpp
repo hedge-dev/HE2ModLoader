@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "HE2ModLoader.h"
 #include "save.h"
 #include "config.h"
 #include <INIReader.h>
@@ -16,7 +17,7 @@ void LoadConfig()
 
     std::string logType = config.GetString("CPKREDIR", "LogType", "");
     std::string logFile = config.GetString("CPKREDIR", "LogFile", "cpkredir.log");
-    ModsDbIniPath = config.GetString("CPKREDIR", "ModsDbIni", ".\\Mods\\ModsDB.ini");
+    ModsDbIniPath = config.GetString("CPKREDIR", "ModsDbIni", ".\\mods\\ModsDB.ini");
     SaveFileFallback = config.GetString("CPKREDIR", "SaveFileFallback", "");
     SaveFileOverride = config.GetString("CPKREDIR", "SaveFileOverride", "");
     EnableSaveFileRedirection = config.GetBoolean("CPKREDIR", "EnableSaveFileRedirection", false);
@@ -29,6 +30,8 @@ void LoadConfig()
     // Do not use cpkredir.sav, should nolonger be needed
     if (SaveFileFallback.find("cpkredir.sav") != std::string::npos)
         SaveFileFallback = "savedata";
+
+    ModsDbIniPath = ConvertUnixToWindows(ModsDbIniPath);
 
     if (!logType.empty())
     {

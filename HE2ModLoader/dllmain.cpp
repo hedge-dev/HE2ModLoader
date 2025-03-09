@@ -546,7 +546,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
             saveFilePath->append(SaveFileOverride);
         }
 
-        useSaveFilePath = EnableSaveFileRedirection != 0;
+        useSaveFilePath = EnableSaveFileRedirection != 0 && !saveFilePath->empty();
 
         PrintInfo("Starting HE2ModLoader v%s...", ML_VERSION);
 

@@ -46,3 +46,4 @@ extern const char* RawFolder;
 
 // Functions
 void InitLoaderCri();
+const char* PathSubString(const char* text);

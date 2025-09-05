@@ -9,6 +9,7 @@
 #include "helpers.h"
 #include "cri.h"
 #include "wars.h"
+#include "rangers.h"
 #include "save.h"
 #include "Events.h"
 #include <d3d11.h>
@@ -297,8 +298,14 @@ void InitLoader()
 
     InitLoaderCri();
 
-    if (CurrentGame == Game_Wars)
+    switch (CurrentGame) {
+    case Game_Wars:
         InitLoaderWars();
+        break;
+    case Game_Rangers:
+        InitLoaderRangers();
+        break;
+    }
 
     if (SupportsSaveRedirectionv2())
         InitSaveRedirection();

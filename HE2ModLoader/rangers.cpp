@@ -7,7 +7,7 @@
 #include "helpers.h"
 #include "sigscanner.h"
 
-DEFINE_SIGSCAN(FileSystemNativeLocal_OpenFileForReadingByPath, "\x48\x89\x5C\x24\x08\x48\x89\x74\x24\x10\x57\x48\x81\xEC\xC0\x00\x00\x00\x48\x89\xD3\x48\x89\xCE\xE8\x00\x00\x00\x00\x48\x89\xC1\xE8\x00\x00\x00\x00\x48\x8D\x4C\x24\x38\x8B\x15", "xxxxxxxxxxxxxxx???xxxxxxx????xxxx????xxxxxxx")
+DEFINE_SIGSCAN(FileSystemNativeLocal_OpenFileForReadingByPath, "\x48\x89\x5C\x24\x08\x48\x89\x74\x24\x10\x57\x48\x81\xEC\xC0\x00\x00\x00\x48\x89\xD3\x48\x89\xCE\xE8\x00\x00\x00\x00\x48\x89\xC1\xE8\x00\x00\x00\x00\x48\x8D\x4C\x24\x38", "xxxxxxxxxxxxxxx???xxxxxxx????xxxx????xxxxx")
 
 HOOK(void*, __fastcall, FileSystemNativeLocal_OpenFileForReadingByPath, _aFileSystemNativeLocal_OpenFileForReadingByPath, void* a1, char* path)
 {
@@ -28,7 +28,7 @@ HOOK(void*, __fastcall, FileSystemNativeLocal_OpenFileForReadingByPath, _aFileSy
     return originalFileSystemNativeLocal_OpenFileForReadingByPath(a1, path);
 }
 
-void InitLoaderRangers()
+void InitLoaderRangersMiller()
 {
     // Scan save hooks
     DO_SIGSCAN(FileSystemNativeLocal_OpenFileForReadingByPath);

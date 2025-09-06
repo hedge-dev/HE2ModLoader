@@ -303,7 +303,8 @@ void InitLoader()
         InitLoaderWars();
         break;
     case Game_Rangers:
-        InitLoaderRangers();
+    case Game_Miller:
+        InitLoaderRangersMiller();
         break;
     }
 

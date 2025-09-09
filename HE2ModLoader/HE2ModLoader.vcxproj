@@ -114,6 +114,7 @@
     <ClInclude Include="include\syelog.h" />
     <ClInclude Include="loader.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="rangers.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="save.h" />
     <ClInclude Include="sigscanner.h" />
@@ -129,6 +130,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="rangers.cpp" />
     <ClCompile Include="save.cpp" />
     <ClCompile Include="wars.cpp" />
   </ItemGroup>

@@ -72,6 +72,9 @@
     <ClInclude Include="epic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="rangers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -96,6 +99,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rangers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -54,9 +54,10 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
         auto it = FileCache.find(newPath);
         if (it != FileCache.end() && !it->second.empty())
         {
-            const char* replacePath = it->second.c_str();
-            PrintInfo("Loading File: %s", replacePath);
-            strcpy(path, replacePath);
+            const char* fullPath = it->second.c_str();
+            PrintInfo("Loading File: %s", fullPath);
+            return originalcrifsiowin_CreateFile((CriChar8*)fullPath, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+                dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
         }
     }
     else
@@ -70,9 +71,10 @@ HOOK(HANDLE, __fastcall, crifsiowin_CreateFile, _acrifsiowin_CreateFile, CriChar
             attributes = GetFileAttributesA(filePath.c_str());
             if (attributes != -1)
             {
-                strcpy(path, filePath.c_str());
-                PrintInfo("Loading File: %s", path);
-                break;
+                const char* fullPath = filePath.c_str();
+                PrintInfo("Loading File: %s", fullPath);
+                return originalcrifsiowin_CreateFile((CriChar8*)fullPath, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+                    dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
             }
         }
     }
@@ -89,10 +91,7 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
         std::transform(newPath.begin(), newPath.end(), newPath.begin(), ::tolower);
         auto it = FileCache.find(newPath);
         if (it != FileCache.end())
-        {
-            strcpy(path, it->second.c_str());
             *exists = true;
-        }
     }
     else
     {
@@ -104,7 +103,6 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
             attributes = GetFileAttributesA(filePath.c_str());
             if (attributes != -1)
             {
-                strcpy(path, filePath.c_str());
                 *exists = true;
                 break;
             }
@@ -113,16 +111,7 @@ HOOK(CriError, __fastcall, criFsIoWin_Exists, _acriFsIoWin_Exists, CriChar8* pat
         if (path && attributes == -1)
         {
             // TODO: Add proper UTF8 support
-            //if (crifsiowin_utf8_path)
-            //{
-            //    WCHAR buffer[PATH_LIMIT];
-            //    MultiByteToWideChar(65001, 0, path, strlen(path) + 1, buffer, PATH_LIMIT);
-            //    attributes = GetFileAttributesW(buffer);
-            //}
-            //else
-            //{
             attributes = GetFileAttributesA(path);
-            //}
             *exists = attributes != -1 && !(attributes & FILE_ATTRIBUTE_DIRECTORY);
         }
         else if (!*exists)

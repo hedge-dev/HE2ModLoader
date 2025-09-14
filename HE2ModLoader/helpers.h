@@ -12,7 +12,7 @@ static size_t PROCESS_ENTRY = (size_t)DetourGetEntryPoint((HMODULE)BASE_ADDRESS)
 	returnType (callingConvention *function)(__VA_ARGS__) = (returnType(callingConvention*)(__VA_ARGS__))(location)
 
 #define PROC_ADDRESS(libraryName, procName) \
-	GetProcAddress(LoadLibrary(TEXT(libraryName)), procName)
+	GetProcAddress(LoadLibraryEx(TEXT(libraryName), NULL, LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_USER_DIRS), procName)
 
 #define HOOK(returnType, callingConvention, functionName, location, ...) \
     typedef returnType callingConvention functionName(__VA_ARGS__); \

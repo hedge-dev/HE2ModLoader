@@ -562,6 +562,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
         if (PROC_ADDRESS("EOSSDK-Win64-Shipping.dll", "EOS_Initialize"))
             CurrentPlatform = Platform_Epic;
 
+        PrintInfo("ML platform ID is %d", CurrentPlatform);
+
         switch (CurrentPlatform)
         {
             case Platform_Steam:
